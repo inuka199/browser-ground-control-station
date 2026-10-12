@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import ConnectionStatus from './components/ConnectionStatus';
 import TelemetryWidget from './components/TelemetryWidget';
+import Attitude3DView from './components/Attitude3DView';
 
 const WS_URL = 'ws://localhost:8080';
 
@@ -239,6 +240,13 @@ function App() {
           </div>
         )}
       </section>
+
+      {/* 3D Real-Time Attitude Visualization */}
+      <Attitude3DView
+        roll={telemetry.roll}
+        pitch={telemetry.pitch}
+        yaw={telemetry.yaw}
+      />
 
       <main className="dashboard-grid">
         <TelemetryWidget
