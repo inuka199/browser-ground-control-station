@@ -64,22 +64,31 @@ output add 127.0.0.1:14550
 ```
 
 ### 3. Start the Backend Bridge
-In a **third** terminal, navigate to the root of this project:
+In a **third (WSL2 Ubuntu)** terminal, navigate to the project directory:
 ```bash
+cd /mnt/c/Users/User/Documents/Backup/gcs-project
+
 # Install backend dependencies (if not already done)
 npm install
 
 # Start the Node.js MAVLink bridge
 npm start
 ```
+*(Alternatively, from Windows PowerShell, you can run: `wsl --cd /mnt/c/Users/User/Documents/Backup/gcs-project npm start`)*
+
+> [!IMPORTANT]
+> Because ArduPilot SITL and MAVProxy send UDP packets to `127.0.0.1:14550` inside WSL2, the bridge **must** run inside WSL2 to receive those UDP packets. In WSL2 architecture, `127.0.0.1` is the VM's internal loopback; WSL2 does not forward UDP packets sent to `127.0.0.1` across the virtual machine boundary to Windows.
+
 You should see:
 ```text
-MAVLink definitions loaded
 WebSocket server running on ws://localhost:8080
 UDP bridge listening on 127.0.0.1:14550
 Waiting for drone telemetry...
+MAVLink receiver definitions loaded
+MAVLink sender ready (System ID: 255, Component ID: 190)
 ```
-*(Followed by periodic telemetry updates printed to the console).*
+*(Followed by periodic telemetry updates and packet diagnostic counters).*
+
 
 ### 4. Start the React Frontend
 In a **fourth** terminal, navigate to the `client/` directory within this project:
