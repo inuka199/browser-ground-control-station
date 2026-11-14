@@ -1,0 +1,1 @@
+import{n as e,t}from"./jsx-runtime-Dk72oS4N.js";import"./index-Ca1kNE6-.js";e();var n=t();function r({title:e,children:t,kicker:r=`NEXUS FLIGHT STATION`}){return(0,n.jsxs)(`header`,{children:[(0,n.jsx)(`span`,{className:`workspace-kicker`,children:r}),(0,n.jsx)(`h1`,{children:e}),(0,n.jsx)(`p`,{children:t})]})}export{r as t};

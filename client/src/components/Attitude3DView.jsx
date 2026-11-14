@@ -2,10 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-/**
- * Creates a text sprite using an HTML5 2D canvas.
- * Avoids extra font loaders or external assets.
- */
 function createTextSprite(text, color = '#ffffff', fontSize = 28, bgColor = 'rgba(15, 23, 42, 0.75)') {
   const canvas = document.createElement('canvas');
   canvas.width = 128;
@@ -409,6 +405,7 @@ const Attitude3DView = ({ roll, pitch, yaw }) => {
       resizeObserver.disconnect();
       controls.dispose();
       renderer.dispose();
+      renderer.forceContextLoss();
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
       }

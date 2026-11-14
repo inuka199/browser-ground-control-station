@@ -30,3 +30,6 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Isolated Sites publishing checkout and archive
+.sites-deploy/

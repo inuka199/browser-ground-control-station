@@ -1,0 +1,62 @@
+.sim-environment { width: 298px; color: #e6edea; font-family: Inter, system-ui, sans-serif; }
+.environment-toggle { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #c7dddc26; background: #102524e6; backdrop-filter: blur(18px); border-radius: 10px; color: inherit; cursor: pointer; text-align: left; box-shadow: 0 5px 24px #0002; }
+.environment-sun { font-size: 25px; color: #e7c691; line-height: 1; }
+.environment-toggle strong { display: block; font-size: 16px; font-variant-numeric: tabular-nums; letter-spacing: 1px; font-weight: 500; }
+.environment-toggle-label { display: block; font-size: 8px; letter-spacing: 1.5px; color: #b8c5be; margin-top: 4px; }
+.environment-toggle-end { margin-left: auto; font-size: 11px; color: #c8d7ce; }
+.environment-toggle-end > span { margin-left: 7px; }
+.environment-settings { background: #10201ff5; border: 1px solid #c7dddc26; border-radius: 10px; margin-top: 7px; padding: 16px; box-shadow: 0 10px 30px #0004; max-height: calc(100dvh - 300px); overflow: auto; }
+.environment-heading { display: flex; justify-content: space-between; font-size: 9px; letter-spacing: 1.7px; color: #b2c2b8; margin-bottom: 16px; }
+.environment-heading kbd { border: 1px solid #73867c; border-radius: 3px; padding: 1px 4px; }
+.environment-presets { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-bottom: 18px; }
+.environment-presets button { padding: 8px 0; background: #ffffff08; color: #c6d3ca; border: 1px solid #ffffff17; border-radius: 5px; cursor: pointer; font-size: 11px; }
+.environment-presets button[aria-pressed=true] { color: #f0d49f; border-color: #c7ad775e; background: #c7ad771c; }
+.environment-presets button:hover, .environment-toggle:hover { border-color: #c7ad7788; }
+.environment-range { display: block; margin: 16px 0; font-size: 11px; }
+.environment-range > span { display: flex; justify-content: space-between; }
+.environment-range output { color: #d9c698; font-variant-numeric: tabular-nums; }
+.environment-range input { width: 100%; accent-color: #d9c698; height: 20px; margin-top: 6px; cursor: pointer; }
+.environment-check, .environment-select { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; margin: 14px 0; }
+.environment-check input { accent-color: #d9c698; width: 16px; height: 16px; cursor: pointer; }
+.environment-select select { background: #20332e; border: 1px solid #73867c66; border-radius: 4px; color: #e0e9df; padding: 6px 8px; font: inherit; }
+.environment-settings p { font-size: 10px; line-height: 1.6; color: #a5b8ac; margin: 13px 0 0; }
+.sim-environment :focus-visible { outline: 2px solid #efd09a; outline-offset: 3px; }
+.sound-settings { border-top: 1px solid #c7dddc26; padding-top: 16px; margin-top: 18px; color: #dce5df; }
+.sound-heading { display: flex; justify-content: space-between; font-size: 9px; letter-spacing: 1.5px; color: #b2c2b8; margin-bottom: 12px; }
+.sound-heading kbd { border: 1px solid #73867c; border-radius: 3px; padding: 1px 4px; }
+.sound-state { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.sound-state > span { color: #b2c2b8; font-size: 10px; }
+.sound-toggle { padding: 7px 10px; background: #ffffff08; color: #e0e9df; border: 1px solid #ffffff28; border-radius: 5px; font-size: 11px; cursor: pointer; }
+.sound-settings p { font-size: 10px; line-height: 1.6; color: #a5b8ac; margin: 10px 0; }
+.sound-settings :focus-visible { outline: 2px solid #efd09a; outline-offset: 3px; }
+.sim-render-error { position: absolute; z-index: 80; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #132322; padding: 28px; width: min(420px,90vw); border: 1px solid #668178; border-radius: 12px; color: #e6edea; }
+.sim-render-error p { font-size: 14px; line-height: 1.6; }
+.sim-render-error button { padding: 10px 16px; border-radius: 6px; background: #d9c698; color: #132322; border: 0; cursor: pointer; }
+/* Legible instrumentation over a bright sky as well as a night scene. */
+.hud-top-left { background: #0c1c20c9; padding: 10px 12px; border: 1px solid #dce9e41f; border-radius: 10px; backdrop-filter: blur(12px); max-width: 400px; }
+.hud-demo-note { color: #cad7d1; }
+.tiles-pill--idle, .hud-gps-chip--wait { color: #c1cdc6; }
+.hud-top-right-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 520px; }
+.sim-control-guide { background: #0c1c20d4; z-index: 9; }
+.sim-guide-desc { color: #bccbc4; }
+.sim-guide-header { color: #cbd9d2; }
+.hud-takeoff-banner { position: absolute; bottom: 6rem; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 7px; width: max-content; max-width: 85vw; background: #102524df; border: 1px solid #d9c69855; border-radius: 8px; padding: 10px 16px; color: #e5e6d8; font-size: 11px; text-align: center; }
+.hud-takeoff-sub { display: block; flex-basis: 100%; font-size: 9px; color: #bac8bd; letter-spacing: 1px; }
+.hud-takeoff-text kbd { color: #f1d29d; }
+@media (max-width: 1000px) {
+  .hud-top-left { max-width: 300px; }
+  .hud-top-right-actions { max-width: 350px; }
+}
+@media (max-width: 700px) {
+  .hud-top-left { top: 8px; left: 8px; max-width: 42vw; padding: 7px; }
+  .hud-demo-note { display: none; }
+  .hud-top-right { right: 8px; top: 8px; max-width: 52vw; }
+  .hud-cam-btn { min-width: 30px; padding: 5px 4px; }
+  .hud-top-right-actions button, .hud-top-right-actions a { padding: 5px; font-size: 9px; }
+  .sim-environment { width: min(298px, 52vw); }
+  .environment-toggle { padding: 8px; gap: 6px; }
+  .environment-toggle-label { font-size: 7px; letter-spacing: 0.6px; }
+  .environment-toggle-end { font-size: 9px; }
+  .environment-settings { position: fixed; right: 8px; width: min(298px, calc(100vw - 16px)); max-height: calc(100dvh - 240px); }
+  .sim-control-guide { left: 8px; padding: 8px; min-width: auto; }
+}
