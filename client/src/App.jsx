@@ -5,6 +5,7 @@ import './components/views/Workspace.css';
 import { initWebSocket, destroyWebSocket } from './services/websocket.js';
 import AppShell from './components/layout/AppShell.jsx';
 import RouteBoundary from './components/layout/RouteBoundary.jsx';
+const LiveStation = lazy(() => import('./components/views/LiveStation.jsx'));
 const DashboardView = lazy(() => import('./components/views/DashboardView.jsx'));
 const HelpView = lazy(() => import('./components/views/HelpView.jsx'));
 const SimulationView = lazy(() => import('./components/views/SimulationView.jsx'));
@@ -26,6 +27,7 @@ export default function App() {
     <Route path="/simulator" element={<SimulatorPage/>}/>
     <Route path="/garage" element={<DroneGarage/>}/>
     <Route element={<AppShell/>}>
+      <Route path="/live" element={<LiveStation/>}/>
       <Route index element={<DashboardView/>}/>
       <Route path="/simulation" element={<SimulationView/>}/>
       <Route path="/action" element={<ActionView/>}/>

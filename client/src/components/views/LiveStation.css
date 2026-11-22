@@ -1,0 +1,8 @@
+.station-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:1rem;align-items:start}
+.live-station .workspace-card{min-width:0}.live-station svg{display:block;width:100%;max-height:340px}.live-station svg text{fill:#eef8ff;font:13px sans-serif}
+.home-compass{display:flex;align-items:center;gap:1rem;margin:.75rem 0}.home-compass b{font-size:2rem;color:#68e5bc;min-width:2rem;text-align:center}
+.live-station fieldset{border:1px solid #516273;border-radius:.5rem;margin:.8rem 0;padding:.8rem}
+.live-station label{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:.5rem 0}
+.live-station input[type=number]{width:7rem}.live-station button{margin:.2rem;padding:.45rem .7rem}.live-station .rtl-button{font-weight:700;border:2px solid #c68743}
+.live-station dl>div{display:flex;justify-content:space-between;gap:.5rem}.live-station dd{margin:0}.live-station details{margin:1rem 0}
+

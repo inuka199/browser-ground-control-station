@@ -17,12 +17,12 @@
  *  - ↑/↓:     Fly forward/back; tilt nose down/up (demo visual)
  *  - ←/→:     Roll left / right (demo visual)
  */
-import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useLayoutEffect, useCallback, useState, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { prepareFlightLaunch } from './flightLaunch.js';
 import SimulatorWorld      from './SimulatorWorld.jsx';
 import GameHUD             from './GameHUD.jsx';
 import PauseMenu           from './PauseMenu.jsx';
-import FlightControlPanel  from './FlightControlPanel.jsx';
 import { useSimulatorStore } from '../../store/slices/simulator.js';
 import { demoInput }        from './demoInput.js';
 import { FLIGHT_KEYS, flightAxes } from './flightKeys.js';
@@ -71,7 +71,12 @@ function ControlGuide() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function SimulatorPage() {
-  const navigate   = useNavigate();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const destination = searchParams.get('launch');
+  // Apply launch intent before SimulatorWorld's effect initializes its spawn/camera.
+  useLayoutEffect(() => { if(destination === 'live') { navigate('/live',{replace:true});return; } useSimulatorStore.getState().setFlightSource('demo'); prepareFlightLaunch(destination); }, [destination, navigate]);
+
   const isPaused   = useSimulatorStore((s) => s.isPaused);
   const isHudVisible = useSimulatorStore(s => s.isHudVisible);
   const cameraMode = useSimulatorStore((s) => s.cameraMode);
@@ -261,7 +266,7 @@ export default function SimulatorPage() {
 
       {/* ── Flight Control Panel (slide-out drawer) ── */}
       {fcpOpen && isHudVisible && (
-        <FlightControlPanel onClose={() => setFcpOpen(false)} />
+        <aside className="flight-control-panel"><h2>Simulation</h2><p>Aircraft commands are available in the live station.</p><button onClick={()=>navigate('/live')}>Open live station</button><button onClick={()=>setFcpOpen(false)}>Close</button></aside>
       )}
 
       {/* ── Keyboard guide (bottom-left) ── */}

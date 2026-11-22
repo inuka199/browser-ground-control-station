@@ -19,20 +19,22 @@ const DEG2RAD = Math.PI / 180;
 
 /**
  * Convert GPS (lat, lon, relativeAltitude) to local Three.js Vector3.
- * @param {number|null} lat
- * @param {number|null} lon
+ * @param {number} lat
+ * @param {number} lon
  * @param {number} relAlt  — metres above home
- * @returns {{ x: number, y: number, z: number }}
+ * @returns {{ x: number, y: number, z: number }|null} null for invalid coordinates
  */
-export function gpsToLocal(lat, lon, relAlt = 0) {
-  const dLat = ((lat ?? ORIGIN_LAT) - ORIGIN_LAT) * DEG2RAD;
-  const dLon = ((lon ?? ORIGIN_LON) - ORIGIN_LON) * DEG2RAD;
+export function gpsToLocal(lat, lon, relAlt) {
+  if (![lat, lon, relAlt].every(Number.isFinite) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  const dLat = (lat - ORIGIN_LAT) * DEG2RAD;
+  const dLon = (lon - ORIGIN_LON) * DEG2RAD;
   const cosLat = Math.cos(ORIGIN_LAT * DEG2RAD);
-  return {
+  const local = {
     x:  dLon * cosLat * R_EARTH,  // East  → +X
     y:  relAlt,                   // Up    → +Y
     z: -dLat * R_EARTH,           // North → -Z
   };
+  return Object.values(local).every(Number.isFinite) ? local : null;
 }
 
 /**

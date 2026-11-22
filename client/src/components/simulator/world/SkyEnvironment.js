@@ -3,6 +3,7 @@ import { solarState } from './environmentMath.js';
 import { seededRandom, disposeObject } from './sceneUtils.js';
 import { glowTexture } from './cityTextures.js';
 import { waterVertex, waterFragment, oceanGeometry } from './OceanSurface.js';
+import { buildStormEffects } from './StormEffects.js';
 
 const skyVertex = /* glsl */ `
 #include <common>
@@ -17,6 +18,7 @@ const skyFragment = /* glsl */ `
 #include <logdepthbuf_pars_fragment>
 uniform vec3 sunDirection;
 uniform float daylight, golden, time, haze;
+uniform float rainAmount, lightning;
 varying vec3 vDirection;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
@@ -34,23 +36,27 @@ void main() {
   float sunDot = max(dot(ray, sunDirection), 0.0);
   color += vec3(1.0,0.69,0.36) * pow(sunDot, 18.0) * (0.16 + golden * 0.42) * daylight;
   color += vec3(4.0,3.3,2.2) * smoothstep(0.99972,0.9999,sunDot) * daylight;
+  color = mix(color, mix(vec3(0.014,0.019,0.033),vec3(0.19,0.23,0.28),daylight),rainAmount*0.86);
   if (ray.y > 0.018) {
     vec2 p = ray.xz / (ray.y + 0.13) * 2.1 + vec2(time * 0.004, time * 0.001);
     float cloud = noise(p) * 0.55 + noise(p * 2.07) * 0.28 + noise(p * 4.1) * 0.12 + noise(p * 8.3) * 0.05;
-    float cover = smoothstep(0.49, 0.73, cloud) * smoothstep(0.018,0.16,ray.y) * 0.8;
+    float cover = smoothstep(0.49-rainAmount*0.25, 0.73-rainAmount*0.16, cloud) * smoothstep(0.018,0.16,ray.y) * 0.8;
     vec3 cloudColor = mix(vec3(0.055,0.075,0.12), mix(vec3(0.88,0.91,0.92),vec3(1.0,0.70,0.47),golden * 0.5),daylight);
+    cloudColor *= 1.0 - 0.76 * rainAmount;
     color = mix(color, cloudColor, cover);
   }
-  gl_FragColor = vec4(color, 1.0);
+  gl_FragColor = vec4(color + vec3(0.18,0.21,0.28)*lightning, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`;
 /** Local metre-based atmosphere. Its elapsed clock freezes with the simulation. */
 export function buildSkyEnvironment(scene) {
   const group = new THREE.Group(); scene.add(group);
+  const updatePrecipitation = buildStormEffects(group);
   const uniforms = {
     time: { value: 0 }, daylight: { value: 1 }, golden: { value: 0 }, haze: { value: 0.35 },
     sunDirection: { value: new THREE.Vector3() },
+    rainAmount: { value: 0 }, lightning: { value: 0 },
   };
   const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 32, 16), new THREE.ShaderMaterial({
     uniforms, vertexShader: skyVertex, fragmentShader: skyFragment, side: THREE.BackSide, depthWrite: false,
@@ -69,7 +75,7 @@ export function buildSkyEnvironment(scene) {
   const starGeometry = new THREE.BufferGeometry(); starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
   const stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xdbe9ff, size: 1.4, sizeAttenuation: false, transparent: true, depthWrite: false, fog: false })); group.add(stars);
   const moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xdbedff, transparent: true, depthWrite: false, fog: false })); moon.scale.set(190,190,1); group.add(moon);
-  const moonDisc = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, depthWrite: false, fog: false })); moonDisc.scale.set(44,44,1); group.add(moonDisc);
+  const moonDisc = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, depthWrite: false, fog: false })); moonDisc.scale.set(44,44,1); group.add(moonDisc);
   const ambient = new THREE.HemisphereLight(0xc4deef, 0x807257, 1.5); group.add(ambient);
   const sun = new THREE.DirectionalLight(0xffefda, 3.5); sun.castShadow = true;
   sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.near = 1; sun.shadow.camera.far = 1200;
@@ -79,23 +85,25 @@ export function buildSkyEnvironment(scene) {
   const moonlight = new THREE.DirectionalLight(0x9fbfff, 0.3); group.add(moonlight, moonlight.target);
   const daylightFog = new THREE.Color(0xa3bdc9), sunsetFog = new THREE.Color(0xbe9277), nightFog = new THREE.Color(0x111e33);
   let quality;
-  function update(elapsed, options, camera, focus) {
+  function update(elapsed, options, camera, focus, weather) {
     const state = solarState(options.timeOfDay);
+    uniforms.rainAmount.value = weather.rain; uniforms.lightning.value = weather.flash;
     uniforms.time.value = elapsed; uniforms.daylight.value = state.daylight; uniforms.golden.value = state.golden; uniforms.haze.value = options.haze;
     const direction = uniforms.sunDirection.value.set(Math.cos(state.angle) * 0.82, state.elevation, -0.36).normalize();
     sky.position.copy(camera.position); stars.position.copy(camera.position);
-    stars.material.opacity = state.night * 0.85; stars.visible = state.night > 0.01;
+    stars.material.opacity = state.night * 0.85 * (1-weather.rain); stars.visible = state.night > 0.01;
     moon.position.copy(camera.position).addScaledVector(direction, -8200); moonDisc.position.copy(moon.position);
-    moon.material.opacity = moonDisc.material.opacity = state.night;
+    moon.material.opacity = moonDisc.material.opacity = state.night * (1-weather.rain);
     sun.color.setRGB(1, 0.96 - state.golden * 0.34, 0.86 - state.golden * 0.48);
-    sun.intensity = state.daylight * (3.1 - state.golden * 0.9);
+    sun.intensity = state.daylight * (3.1 - state.golden * 0.9) * (1 - weather.rain * 0.75);
     const texel = 280 / sun.shadow.mapSize.x;
     sun.target.position.set(Math.round(focus.x / texel)*texel, 0, Math.round(focus.z / texel)*texel);
     sun.position.copy(sun.target.position).addScaledVector(direction, 500);
-    ambient.intensity = 0.24 + state.daylight * 1.5; ambient.color.set(state.daylight > 0.2 ? 0xc4deef : 0x718fbe);
+    ambient.intensity = 0.24 + state.daylight * (1.5 - weather.rain * 0.52) + weather.flash * 0.65; ambient.color.set(state.daylight > 0.2 ? 0xc4deef : 0x718fbe);
     moonlight.intensity = state.night * 0.55; moonlight.target.position.copy(focus); moonlight.position.copy(focus).addScaledVector(direction,-500);
     fog.color.copy(nightFog).lerp(daylightFog, state.daylight).lerp(sunsetFog, state.golden * 0.5);
-    fog.density = 0.00022 + options.haze * 0.00075; waterUniforms.fogDensity.value = fog.density;
+    fog.color.multiplyScalar(1-weather.rain*0.44);
+    fog.density = 0.00022 + options.haze * 0.00075 + weather.rain * 0.00095; waterUniforms.fogDensity.value = fog.density;
     scene.environmentIntensity = 0.12 + state.daylight * 0.65;
     if (quality !== options.quality) {
       quality = options.quality; sun.castShadow = quality !== 'low';
@@ -105,5 +113,5 @@ export function buildSkyEnvironment(scene) {
     }
     return state;
   }
-  return { update, ocean, dispose() { disposeObject(group); scene.remove(group); scene.fog = null; } };
+  return { update, updatePrecipitation, ocean, dispose() { disposeObject(group); scene.remove(group); scene.fog = null; } };
 }

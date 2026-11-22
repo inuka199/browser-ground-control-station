@@ -228,7 +228,7 @@ export function buildProceduralWorld() {
   const life = buildCityLife(); group.add(life.group);
   const localLights = [-30,30].map(z => { const light=new THREE.PointLight(0xffd49b,0,23,2); light.position.set(4,6,z); group.add(light); return light; });
   return {
-    group, padPositions, buildingBoxes, traffic:life.traffic, blast:life.blast, resetTraffic:life.resetTraffic,
+    group, padPositions, buildingBoxes, traffic:life.traffic, people:life.people, blast:life.blast, resetTraffic:life.resetTraffic,
     update(elapsed, delta, solar, options, camera) {
       port.update(elapsed,solar);
       windows.forEach(m => { m.emissiveIntensity=solar.night*1.15; });

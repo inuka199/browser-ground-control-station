@@ -8,6 +8,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useConnectionStore } from '../../store/slices/connection.js';
 
 const PRIMARY = [
+  {to:'/live',label:'Live station',icon:'◎'},
   {to:'/',label:'Home',icon:'⌂',end:true},
   {to:'/simulator',label:'Fly',icon:'✈'},
   {to:'/garage',label:'Aircraft',icon:'◇'},

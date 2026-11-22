@@ -14,6 +14,9 @@ export const useEnvironmentStore = create((set) => ({
   advanceClock: (delta) => set(s => s.cycleEnabled ? { timeOfDay: advanceTime(s.timeOfDay, delta, s.cycleMinutes) } : {}),
   setQuality: (quality) => { if (['low', 'balanced', 'high'].includes(quality)) set({ quality }); },
   setCityLife: (cityLife) => set({ cityLife: Boolean(cityLife) }),
+  setWeatherMode: (weatherMode) => {
+    if (['auto', 'clear', 'storm'].includes(weatherMode)) set({ weatherMode });
+  },
   setHaze: (haze) => { if (Number.isFinite(haze)) set({ haze: Math.min(1, Math.max(0, haze)) }); },
   /** @type {Array<{id:string, type:string, position:{x:number,y:number,z:number}, rotation:{y:number}, scale:{x:number,y:number,z:number}}>} */
   obstacles: [],

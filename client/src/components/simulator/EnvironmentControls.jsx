@@ -12,6 +12,7 @@ export default function EnvironmentControls({ compact = false, children }) {
   const time=useEnvironmentStore(s=>s.timeOfDay), cycle=useEnvironmentStore(s=>s.cycleEnabled);
   const minutes=useEnvironmentStore(s=>s.cycleMinutes), quality=useEnvironmentStore(s=>s.quality);
   const cityLife=useEnvironmentStore(s=>s.cityLife), haze=useEnvironmentStore(s=>s.haze);
+  const weatherMode=useEnvironmentStore(s=>s.weatherMode);
   const tilesStatus=useSimulatorStore(s=>s.tilesStatus);
   const actions=useEnvironmentStore.getState();
   useEffect(()=>{
@@ -33,6 +34,13 @@ export default function EnvironmentControls({ compact = false, children }) {
       <label className="environment-check"><span>Day / night cycle</span><input type="checkbox" checked={cycle} onChange={e=>actions.setCycleEnabled(e.target.checked)}/></label>
       {cycle && <label className="environment-select"><span>Full day in</span><select aria-label="Day cycle duration" value={minutes} onChange={e=>actions.setCycleMinutes(Number(e.target.value))}><option value="2">2 minutes</option><option value="8">8 minutes</option><option value="20">20 minutes</option><option value="60">1 hour</option></select></label>}
       <label className="environment-range"><span>Coastal haze <output>{Math.round(haze*100)}%</output></span><input aria-label="Coastal haze" type="range" min="0" max="1" step="0.05" value={haze} onChange={e=>actions.setHaze(Number(e.target.value))}/></label>
+      <label className="environment-select"><span>Simulator weather</span>
+        <select value={weatherMode} onChange={e=>actions.setWeatherMode(e.target.value)}>
+          <option value="auto">Occasional storms</option>
+          <option value="storm">Thunderstorm</option>
+          <option value="clear">Clear skies</option>
+        </select>
+      </label>
       <label className="environment-check"><span>Traffic & pedestrians</span><input type="checkbox" disabled={tilesStatus==='ready'} checked={cityLife} onChange={e=>actions.setCityLife(e.target.checked)}/></label>
       <label className="environment-select"><span>Graphics quality</span><select aria-label="Graphics quality" value={quality} onChange={e=>actions.setQuality(e.target.value)}><option value="low">Low</option><option value="balanced">Balanced</option><option value="high">High</option></select></label>
       <p>{quality==='high' ? 'Full resolution, detailed shadows and light bloom.' : quality==='low' ? 'Lighter rendering with fewer people and vehicles.' : 'Soft shadows and city life at a balanced resolution.'}</p>

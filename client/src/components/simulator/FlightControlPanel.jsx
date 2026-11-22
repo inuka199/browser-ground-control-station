@@ -133,7 +133,7 @@ function TutorialSection({ title, body, open, onToggle }) {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export default function FlightControlPanel({ onClose }) {
+export default function FlightControlPanel({ onClose, compact = false }) {
   const telemetry     = useTelemetryStore((s) => s.data);
   const connStatus    = useConnectionStore((s) => s.status);
   const cmdState      = useCommandStore((s) => s.state);
@@ -356,6 +356,7 @@ export default function FlightControlPanel({ onClose }) {
       {/* ── Command Status ── */}
       <CommandStatusRow state={cmdState} message={cmdMessage} />
 
+      {!compact && <>
       {/* ── Emergency Guidance ── */}
       <section className="fcp-section fcp-section--emergency">
         <h3 className="fcp-section-title fcp-title--emergency">⚠ Emergency (SITL)</h3>
@@ -402,6 +403,7 @@ export default function FlightControlPanel({ onClose }) {
           />
         ))}
       </section>
+      </>}
     </div>
   );
 }

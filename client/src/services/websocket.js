@@ -1,3 +1,4 @@
+import { legacyTelemetry, stationAction } from './liveStation.js';
 /**
  * services/websocket.js
  * Singleton WebSocket manager.
@@ -71,13 +72,16 @@ function connect() {
       data = JSON.parse(event.data);
     } catch {
       console.warn('[WS] Received non-JSON message');
+      useTelemetryStore.getState().reset();
       return;
     }
 
-    if (!data || typeof data !== 'object') return;
-
+    if(data?.type==='GCS_STATE') data=legacyTelemetry(data);
+    else if(data?.type==='AUTH_REQUIRED') {setError('Open Live station to authenticate.');return;}
     // Route COMMAND_STATUS responses
-    if (data.type === 'COMMAND_STATUS') {
+    if (data?.type === 'COMMAND_STATUS') {
+      if (!['SUBMITTED', 'CONFIRMED', 'REJECTED', 'FAILED', 'TIMEOUT'].includes(data.status) ||
+          ['label', 'mode', 'command', 'message'].some(key => data[key] != null && typeof data[key] !== 'string')) return;
       const { setPending, setSuccess, setError: setCmdErr } = useCommandStore.getState();
       const identifier = data.label || data.mode || data.command || 'command';
       if (data.status === 'SUBMITTED') {
@@ -91,7 +95,7 @@ function connect() {
     }
 
     // Route live telemetry
-    useTelemetryStore.getState().applyUpdate(data);
+    if (!useTelemetryStore.getState().applyUpdate(data)) return;
 
     // Detect confirmed mode via telemetry heartbeat (legacy behaviour preserved)
     if (data.flightMode) {
@@ -117,6 +121,8 @@ function connect() {
   };
 
   ws.onerror = () => {
+    useTelemetryStore.getState().reset();
+    useConnectionStore.getState().setStatus('disconnected');
     setError('Bridge unavailable. Start the bridge to use live telemetry. Offline flight remains available.');
   };
 }
@@ -160,17 +166,9 @@ export function destroyWebSocket() {
  * @returns {boolean} true if sent, false if WS is not open
  */
 export function sendCommand(payload) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) { useCommandStore.getState().setError('Bridge is offline. No command was sent.'); return false; }
-  try {
-    const label = payload.label || payload.mode || payload.type;
-    useCommandStore.getState().setPending(label, 'Sending ' + label + '…');
-    ws.send(JSON.stringify(payload));
-    return true;
-  } catch (err) {
-    console.error('[WS] Send failed:', err);
-    useCommandStore.getState().setError('Command could not be sent. Check the bridge connection.');
-    return false;
-  }
+  const sent=stationAction(payload);
+  if(!sent)useCommandStore.getState().setError('Open Live station and acquire control before sending a command.');
+  return sent;
 }
 
 /** Get the current raw WebSocket instance (use sparingly). */

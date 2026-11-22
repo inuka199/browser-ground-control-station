@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { staticBatch } from './sceneUtils.js';
+import { sampleSwell } from './OceanSurface.js';
 
 export const PORT_SPAWN = { x: -250, y: 0, z: -395, yaw: 0, grounded: true };
 
@@ -98,10 +99,12 @@ export function buildPortCity({ group, building, collider }) {
   batch.finish();
   return { update(time,solar) {
     light.emissiveIntensity=0.2+solar.night*3;
-    boats.forEach(({root,x,z,cargo},i)=>{
-      root.position.set(x,-0.25+Math.sin(time*0.8+i)*0.18,z);
-      root.rotation.z=Math.sin(time*0.55+i)* (cargo ? 0.008 : 0.035);
-      root.rotation.x=Math.cos(time*0.7+i)*0.018;
+    boats.forEach(({root,x,z,cargo})=>{
+      const wave=sampleSwell(x,z,time);
+      root.position.set(x+wave.dx,-0.25+wave.y,z+wave.dz);
+      const response=cargo?0.5:1;
+      root.rotation.z=Math.atan(wave.slopeX)*response;
+      root.rotation.x=-Math.atan(wave.slopeZ)*response;
     });
     cranes.forEach(({cable,hook},i)=>{
       const lift=3+Math.sin(time*0.18+i)*3;

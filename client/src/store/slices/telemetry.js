@@ -14,6 +14,7 @@
  *   isArmed              : bool — decoded from HEARTBEAT base_mode bit 7
  */
 import { create } from 'zustand';
+import { isFreshPosition, isFreshTelemetry } from '../../services/telemetryValidation.js';
 
 /** @type {import('../../services/telemetryFreshness.js').TelemetryFreshness} */
 const INITIAL = {
@@ -36,22 +37,34 @@ const INITIAL = {
 
 export const useTelemetryStore = create((set) => ({
   data: { ...INITIAL },
+  positionData: null,
 
   /**
    * Apply a raw telemetry payload from the WebSocket.
-   * Only updates fields that are present in the payload.
-   * @param {Partial<typeof INITIAL>} payload
+   * Accept complete, finite, fresh frames atomically. Rejected frames disable live flight.
+   * Keep a separately validated position for Route Replay, which needs no attitude.
+   * @param {object} payload
+   * @returns {boolean} whether the frame was accepted
    */
-  applyUpdate: (payload) =>
-    set((state) => ({
-      data: {
-        ...state.data,
-        ...payload,
-        receivedAt: performance.now(),
-        receivedIso: new Date().toISOString(),
-      },
-    })),
+  applyUpdate: (payload) => {
+    const now = performance.now();
+    const receivedAt = payload != null && Object.hasOwn(payload, 'receivedAt')
+      ? payload.receivedAt : now;
+    const frame = { ...payload, receivedAt };
+    const positionData = !Array.isArray(payload) && isFreshPosition(frame, now) ? {
+      latitude: frame.latitude, longitude: frame.longitude, relativeAltitude: frame.relativeAltitude,
+      receivedAt,
+      positionTimestamp: Object.hasOwn(frame, 'positionTimestamp') ? frame.positionTimestamp : frame.timestamp ?? Date.now(),
+      systemId: Number.isInteger(frame.systemId) ? frame.systemId : null,
+    } : null;
+    if (Array.isArray(payload) || !isFreshTelemetry(frame, now)) {
+      set({ data: { ...INITIAL }, positionData });
+      return false;
+    }
+    set({ data: { ...INITIAL, ...payload, receivedAt, receivedIso: new Date().toISOString() }, positionData });
+    return true;
+  },
 
   /** Reset all telemetry to null (e.g., on disconnect) */
-  reset: () => set({ data: { ...INITIAL } }),
+  reset: () => set({ data: { ...INITIAL }, positionData: null }),
 }));

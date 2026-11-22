@@ -44,8 +44,8 @@ export function createFlightSoundscape(context) {
       samples[samples.length - 1 - i] *= i / fade;
     }
   }
-  function noise(type, frequency, bus) {
-    const source = track(context.createBufferSource()); source.buffer = noiseBuffer; source.loop = true;
+  function noise(type, frequency, bus, buffer = noiseBuffer) {
+    const source = track(context.createBufferSource()); source.buffer = buffer; source.loop = true;
     const filter = track(context.createBiquadFilter()); filter.type = type; filter.frequency.value = frequency; filter.Q.value = 0.5;
     const level = gain(); source.connect(filter).connect(level).connect(bus); start(source);
     return { level, filter, source };
@@ -57,6 +57,26 @@ export function createFlightSoundscape(context) {
   const breakers = noise('bandpass',1400,ambienceBus);
   const harbour = noise('lowpass',170,ambienceBus);
   const insects = noise('bandpass',4200,ambienceBus);insects.filter.Q.value=12;
+  const showerBuffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
+  const patter = showerBuffer.getChannelData(0);
+  let tap = 0;
+  for (let i = 0; i < patter.length; i++) {
+    tap = Math.random() < 90 / context.sampleRate ? 0.85 : tap * 0.97;
+    patter[i] = (Math.random() * 2 - 1) * (0.18 + tap);
+  }
+  const shower = noise('bandpass', 1900, ambienceBus, showerBuffer);
+  const rumble = noise('lowpass', 135, ambienceBus);
+  function streetBus() {
+    const level=gain();
+    const panner=context.createStereoPanner ? track(context.createStereoPanner()) : null;
+    if(panner)level.connect(panner).connect(ambienceBus);else level.connect(ambienceBus);
+    return {level,panner};
+  }
+  const pedestrians=streetBus(), vehicles=streetBus();
+  const motor=track(context.createOscillator()), motorFilter=track(context.createBiquadFilter()), motorLevel=gain();
+  motor.type='sawtooth'; motorFilter.type='lowpass'; motorFilter.Q.value=0.65;
+  motor.connect(motorFilter).connect(motorLevel).connect(vehicles.level);start(motor);
+  let nextVoice=0,nextStep=0,nextRoadHorn=0;
   // Different loop rates avoid identical recurring swells across the layers.
   [wind,surf,traffic,breakers,harbour,insects].forEach((layer,i)=>{if(layer.source.playbackRate) layer.source.playbackRate.value=0.73+i*0.11;});
   let wasFlying = false, lastWarning = -Infinity, nextBird = 3, nextHorn = 10, nextClank = 5, warningTick = false, disposed = false, silent = true;
@@ -64,7 +84,7 @@ export function createFlightSoundscape(context) {
   function smooth(parameter, value, seconds = 0.12) {
     parameter.setTargetAtTime(value, context.currentTime, seconds);
   }
-  function tone(frequency, endFrequency, duration, volume, type = 'sine', delay = 0, ambient = false) {
+  function tone(frequency, endFrequency, duration, volume, type = 'sine', delay = 0, ambient = false, bus = null) {
     const oscillator = context.createOscillator(), level = context.createGain();
     const now = context.currentTime + delay;
     oscillator.type = type;
@@ -73,24 +93,71 @@ export function createFlightSoundscape(context) {
     level.gain.setValueAtTime(0, now);
     level.gain.linearRampToValueAtTime(volume, now + (ambient && duration>1 ? 0.4 : 0.02));
     level.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    oscillator.connect(level).connect(ambient ? ambienceBus : cueBus);
+    oscillator.connect(level).connect(bus ?? (ambient ? ambienceBus : cueBus));
     sources.add(oscillator);
     cueNodes.add(level);
     oscillator.onended = () => { sources.delete(oscillator); cueNodes.delete(level); oscillator.disconnect(); level.disconnect(); };
     oscillator.start(now); oscillator.stop(now + duration);
   }
-  function tickingClick(frequency, volume) {
-    const duration=0.025, length=Math.max(1,Math.floor(context.sampleRate*duration));
+  function tickingClick(frequency, volume, bus=cueBus, duration=0.025) {
+    const length=Math.max(1,Math.floor(context.sampleRate*duration));
     const buffer=context.createBuffer(1,length,context.sampleRate), samples=buffer.getChannelData(0);
     for(let i=0;i<length;i++) samples[i]=(Math.random()*2-1)*Math.pow(1-i/length,4);
     const source=context.createBufferSource(), filter=context.createBiquadFilter(), level=context.createGain();
     const now=context.currentTime;
     source.buffer=buffer;filter.type='bandpass';filter.frequency.value=frequency;filter.Q.value=1.4;
     level.gain.setValueAtTime(volume,now);level.gain.exponentialRampToValueAtTime(0.0001,now+duration);
-    source.connect(filter).connect(level).connect(cueBus);
+    source.connect(filter).connect(level).connect(bus);
     sources.add(source);cueNodes.add(filter);cueNodes.add(level);
     source.onended=()=>{sources.delete(source);cueNodes.delete(filter);cueNodes.delete(level);source.disconnect();filter.disconnect();level.disconnect();};
     source.start(now);source.stop(now+duration);
+  }
+
+  // Short voiced syllables with moving vowel formants suggest conversation.
+  function murmur(id, now) {
+    const source=context.createOscillator(), level=context.createGain();
+    source.type='sawtooth';const pitch=110+(id%5)*17;
+    source.frequency.setValueAtTime(pitch,now);
+    source.frequency.linearRampToValueAtTime(pitch*1.16,now+0.22);
+    source.frequency.linearRampToValueAtTime(pitch*0.91,now+0.55);
+    const filters=[[520,740],[1480,1120]].map(([a,b])=>{
+      const filter=context.createBiquadFilter();filter.type='bandpass';filter.Q.value=5;
+      filter.frequency.setValueAtTime(a,now);filter.frequency.linearRampToValueAtTime(b,now+0.5);
+      source.connect(filter).connect(level);cueNodes.add(filter);return filter;
+    });
+    level.connect(pedestrians.level);cueNodes.add(level);
+    for(const [t,v] of [[0,0],[0.045,0.15],[0.18,0.012],[0.27,0.13],[0.39,0.01],[0.45,0.10],[0.58,0]])
+      level.gain.linearRampToValueAtTime(v,now+t);
+    sources.add(source);source.onended=()=>{
+      sources.delete(source);source.disconnect();
+      for(const node of [...filters,level]){cueNodes.delete(node);node.disconnect();}
+    };
+    source.start(now);source.stop(now+0.59);
+  }
+  function updateStreet(frame,audible) {
+    const street=audible && frame.cityLife ? frame.street : null;
+    const person=street?.person, car=street?.vehicle, now=context.currentTime;
+    for(const [bus,source] of [[pedestrians,person],[vehicles,car]]) {
+      smooth(bus.level.gain,source?.gain??0,0.035);
+      if(bus.panner)smooth(bus.panner.pan,source?.pan??0,0.08);
+    }
+    if(person && now>=nextVoice) {murmur(person.actor.id,now);nextVoice=now+2.1+Math.random()*2.8;}
+    if(person?.actor.walking && now>=nextStep) {
+      tickingClick(680,0.085,pedestrians.level,0.065);
+      nextStep=now+(person.actor.style==='jogger'?0.30:0.54);
+    }
+    if(!car)return;
+    const a=car.actor, rev=clamp(a.acceleration,0,3);
+    const idle=a.kind==='bus'?40:a.kind==='tukTuk'?92:62;
+    smooth(motor.frequency,idle+clamp(a.speed,0,16)*4+rev*10);
+    smooth(motorFilter.frequency,250+clamp(a.speed,0,16)*16+rev*140);
+    smooth(motorLevel.gain,0.045+rev*0.01);
+    if(now>=nextRoadHorn) {
+      const hz=a.kind==='bus'?237:a.kind==='tukTuk'?515:405;
+      tone(hz,hz*0.98,0.28,0.085,'square',0,true,vehicles.level);
+      tone(hz*1.25,hz*1.23,0.25,0.036,'sawtooth',0.02,true,vehicles.level);
+      nextRoadHorn=now+8+Math.random()*7;
+    }
   }
 
   function setVolume({ muted = false, volume = 0.45 } = {}) {
@@ -137,6 +204,8 @@ export function createFlightSoundscape(context) {
       smooth(rotorFilter.frequency, 950 + load * 1300);
       smooth(propWash.level.gain, 0.12 + load * 0.16);
       const mix=ambienceMix(frame);
+      smooth(shower.level.gain, 0.46 * (frame.weather?.rain ?? 0), 0.16);
+      smooth(rumble.level.gain, 1.3 * (frame.weather?.thunder ?? 0), 0.08);
       const gust=0.75+0.15*Math.sin(time*0.23)+0.1*Math.sin(time*0.73);
       smooth(wind.level.gain, (0.035 + Math.min(altitude / 2000, 0.1) + speed * 0.003)*gust);
       smooth(wind.filter.frequency, (600 + speed * 35)*gust);
@@ -152,6 +221,7 @@ export function createFlightSoundscape(context) {
 
       // Cues and continuous layers share the same volume/mute/pause path.
       const audible = !settings?.muted && (settings?.volume ?? 0.45) > 0;
+      updateStreet(frame,audible);
       if (audible && flying && !wasFlying) tone(420, 740, 0.22, 0.055);
       if (audible && !flying && wasFlying) tone(540, 320, 0.25, 0.04);
       wasFlying = flying;

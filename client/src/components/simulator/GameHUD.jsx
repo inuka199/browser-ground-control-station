@@ -19,14 +19,14 @@ export default function GameHUD({onPause,fcpOpen,onToggleFcp}) {
   const sim=useSimulatorStore();
   const challenge=useChallengeStore(s=>s.active);
   const rangefinder=usePayloadStore(s=>s.rangefinder);
-  const live=hasLivePosition(telemetry,status==='connected',now);
+  const live=hasLivePosition(telemetry,status==='connected',now,sim.flightSource);
   const data=live ? telemetry : sim.demoData;
   const attribution=sim.tilesEnabled && sim.tilesStatus!=='idle' && <div className="hud-tiles-attribution" aria-label="Map attribution">{sim.tilesAttribution}</div>;
   if(!sim.isHudVisible) return <><div className="hud-hidden-bar"><button className="hud-show-btn" onClick={sim.toggleHud}>Show controls · H</button></div>{attribution}</>;
   return <div className="game-hud simple-flight" aria-label="Flight HUD">
     <div className="flight-topbar">
-      <div className="flight-identity"><Link to="/" aria-label="Back to dashboard">← Home</Link><span className={live?'flight-live':''}>{live?'Live flight':'Offline flight'}</span></div>
-      <div className="flight-cameras" role="group" aria-label="Camera mode">{CAMERAS.map(([id,label],i)=><button key={id} id={'cam-btn-'+id} aria-pressed={sim.cameraMode===id} onClick={()=>sim.setCameraMode(id)} title={label+' camera ['+(i+1)+']'}>{label}</button>)}</div>
+      <div className="flight-identity"><Link to="/" aria-label="Back to dashboard">← Home</Link><span className={live?'flight-live':''}>{live?'Live flight':sim.launchPoint==='port-city'?'Port City · Offline flight':'Offline flight'}</span></div>
+      <strong>SIMULATION</strong><div className="flight-cameras" role="group" aria-label="Camera mode">{CAMERAS.map(([id,label],i)=><button key={id} id={'cam-btn-'+id} aria-pressed={sim.cameraMode===id} onClick={()=>sim.setCameraMode(id)} title={label+' camera ['+(i+1)+']'}>{label}</button>)}</div>
       <div className="flight-actions"><SoundControls compact/><button onClick={onPause} title="Pause [Esc]">Pause</button></div>
     </div>
     <div className="flight-settings-anchor"><EnvironmentControls compact>
@@ -34,7 +34,7 @@ export default function GameHUD({onPause,fcpOpen,onToggleFcp}) {
         <div className="flight-tool-buttons"><button onClick={sim.isRecording?sim.stopRecording:sim.startRecording} aria-pressed={sim.isRecording}>{sim.isRecording?'Stop & save recording':'Record flight'}</button>
         <Link to="/recordings">Recordings</Link><Link to="/challenges">Challenges</Link><Link to="/garage">Choose drone</Link>
         {sim.flownPath.length>1 && <Link to="/environment">Replay flight</Link>}
-        <button onClick={onToggleFcp} aria-pressed={fcpOpen}>Live commands · F</button>
+        <button onClick={onToggleFcp} aria-pressed={fcpOpen}>Simulation controls · F</button>
         <button disabled={!!challenge} onClick={sim.toggleTiles}>{sim.tilesEnabled?'Disable':'Enable'} Google tiles · B</button></div>
         <p>{sim.tilesStatus==='ready'?'Google tiles active':sim.tilesStatus==='no-key'?'Google tiles need an API key':sim.tilesStatus==='error'?'Tiles unavailable · Coastal world active':sim.tilesStatus==='loading'?'Loading Google tiles…':'Offline coastal world'}</p>
       </details>

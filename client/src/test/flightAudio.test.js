@@ -45,6 +45,19 @@ afterEach(() => {
 });
 
 describe('flight soundscape', () => {
+  it('mixes rain and thunder independently, through the same pause and mute controls as flight audio', () => {
+    const context=audioContext(), sound=createFlightSoundscape(context);
+    const levelFor=frequency=>context.nodes.find(n=>n.kind==='filter'&&n.frequency.value===frequency).connections[0].gain;
+    const rain=levelFor(1900), thunder=levelFor(135), master=masterOf(context);
+    sound.update({...flight,weather:{rain:0.8,thunder:0}},settings);
+    expect(rain.value).toBeGreaterThan(0);expect(thunder.value).toBe(0);
+    sound.update({...flight,weather:{rain:1,thunder:0.8}},settings);
+    expect(thunder.value).toBeGreaterThan(0);
+    sound.setVolume({...settings,muted:true});expect(master.gain.value).toBe(0);
+    sound.silence();expect(master.gain.value).toBe(0);
+    sound.update(flight,settings);expect(rain.value).toBe(0);expect(thunder.value).toBe(0);
+    sound.dispose();
+  });
   it('separates harbour, coastline, city, day and night and fades with listener height',()=>{
     const port=ambienceMix({...flight,x:-400,z:-800,altitude:1,coastDistance:0});
     const inland=ambienceMix({...flight,x:700,z:400,altitude:1,coastDistance:845});
@@ -147,6 +160,27 @@ describe('flight soundscape', () => {
     expect(masterOf(context).gain.value).toBe(0);
     const count = context.nodes.length;
     sound.update(flight, settings); expect(context.nodes).toHaveLength(count);
+  });
+
+  it('synthesizes footsteps, vowel sounds, distinct horn tones and an engine that revs on acceleration',()=>{
+    const ctx=audioContext(),sound=createFlightSoundscape(ctx);
+    const frame={...flight,flying:false,street:{person:{gain:0.7,pan:-0.5,actor:{id:2,walking:true,style:'jogger'}},
+      vehicle:{gain:0.6,pan:0.5,actor:{kind:'bus',speed:4,acceleration:0}}}};
+    const motor=ctx.nodes.filter(n=>n.kind==='oscillator').at(-1);
+    const baseCount=ctx.nodes.length;
+    sound.update(frame,settings);
+    const created=ctx.nodes.slice(baseCount),pitch=motor.frequency.value;
+    expect(created.filter(n=>n.kind==='filter'&&n.type==='bandpass')).toHaveLength(3);
+    expect(created.some(n=>n.kind==='noise')).toBe(true);
+    expect(created.some(n=>n.kind==='oscillator'&&n.type==='square'&&n.frequency.value===237)).toBe(true);
+    const count=ctx.nodes.length;
+    ctx.currentTime=0.1;frame.street.vehicle.actor.acceleration=2;
+    sound.update(frame,settings);expect(ctx.nodes).toHaveLength(count);expect(motor.frequency.value).toBeGreaterThan(pitch);
+    const engineBus=motor.connections[0].connections[0].connections[0];
+    sound.update({...frame,street:null},settings);expect(engineBus.gain.value).toBe(0);
+    sound.update(frame,{...settings,muted:true});expect(engineBus.gain.value).toBe(0);
+    sound.silence();sound.dispose();
+    for(const node of created.filter(n=>n.kind==='oscillator'||n.kind==='noise'))expect(node.stop).toHaveBeenCalled();
   });
 });
 

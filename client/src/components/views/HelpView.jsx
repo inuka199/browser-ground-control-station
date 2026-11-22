@@ -62,7 +62,7 @@ export default function HelpView() {
       likely: 'The Node.js bridge (bridge.js) is not running.',
       checks: [
         'Run `npm start` in the project root (inside WSL2 if using SITL there).',
-        'Confirm bridge output shows "WebSocket server running on ws://localhost:8080".',
+        'Confirm the WebSocket and MAVLink listeners started on the intended addresses.',
         'Check for port conflicts on 8080.',
       ],
     });
@@ -75,7 +75,7 @@ export default function HelpView() {
         'Check that ArduPilot SITL is running.',
         'Check MAVProxy is outputting to 127.0.0.1:14550.',
         'If SITL is in WSL2, confirm bridge.js is also running inside WSL2.',
-        'Look for "0 UDP packets received" diagnostic in bridge console output.',
+        'Check the aircraft heartbeat age in the live station.',
       ],
     });
   }
@@ -84,7 +84,7 @@ export default function HelpView() {
       condition: 'No GPS position data',
       likely: 'GLOBAL_POSITION_INT messages not being received or GPS not yet fixed.',
       checks: [
-        'Check bridge console for "GLOBAL_POSITION_INT" in decoded message counts.',
+        'Check position sample age and GPS/EKF health in the live station.',
         'Wait for GPS fix — ArduPilot SITL may take a few seconds to produce a valid fix.',
         'Inspect latitude/longitude values — 0.0 may indicate a pre-fix state.',
       ],

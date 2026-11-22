@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { seededRandom } from './sceneUtils.js';
 import { glowTexture } from './cityTextures.js';
+import { buildRoadFleet, roadVehicleAt } from './roadVehicles.js';
 
 /** Rounded closed route with continuous tangents, entirely on the street grid. */
 export function trafficRoute(inset = 0) {
@@ -26,26 +27,31 @@ export function buildCityLife() {
   const headlamp=material(0xffffe5,{emissive:0xffeaca,emissiveIntensity:0});
   const taillamp=material(0xa72d20,{emissive:0xff2108,emissiveIntensity:0});
   const box=new THREE.BoxGeometry(1,1,1), sphere=new THREE.SphereGeometry(1,10,8), capsule=new THREE.CapsuleGeometry(0.12,0.5,3,8);
-  const wheelGeo=new THREE.CylinderGeometry(0.32,0.32,0.22,12); wheelGeo.rotateZ(Math.PI/2);
+  const wheelGeo=new THREE.CylinderGeometry(0.5,0.5,1,12); wheelGeo.rotateZ(Math.PI/2);
   function instances(geometry,mat,count) {
     const mesh=new THREE.InstancedMesh(geometry,mat,count); mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.castShadow=true; mesh.receiveShadow=true; mesh.frustumCulled=false; group.add(mesh); return mesh;
   }
-  const bodies=instances(box,carPaint,carCount), cabins=instances(box,carGlass,carCount), roofs=instances(box,carPaint,carCount), wheels=instances(wheelGeo,tires,carCount*4), hubs=instances(wheelGeo,chrome,carCount*4);
-  const fronts=instances(box,headlamp,carCount*2), backs=instances(box,taillamp,carCount*2);
   const beamMat=new THREE.MeshBasicMaterial({map:glowTexture(),color:0xffe0a7,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
   const beamGeo=new THREE.PlaneGeometry(1,1); beamGeo.rotateX(-Math.PI/2);
-  const beams=instances(beamGeo,beamMat,carCount); beams.castShadow=false;
   const routes=[trafficRoute(-3),trafficRoute(3)], lengths=routes.map(r=>r.getLength());
   const palette=[0xe0e4e0,0xa7b5ba,0x293b47,0xa04b3b,0xceb77a,0x637e83,0xf0eee3];
-  const cars=Array.from({length:carCount},(_,i)=>({route:i%2,progress:Math.floor(i/2)/(carCount/2),bus:i%13===0,color:new THREE.Color(palette[i%palette.length])}));
-  const traffic = cars.map((car,index) => ({id:index,x:0,y:0,z:0,yaw:0,halfWidth:0.95,halfLength:car.bus ? 3.4 : 2.1,height:1.7,active:false,destroyed:false,previous:null}));
-  cars.forEach((car,i)=>{ bodies.setColorAt(i,car.color); roofs.setColorAt(i,car.color); });
+  const cars=Array.from({length:carCount},(_,i)=>({route:i%2,progress:Math.floor(i/2)/(carCount/2),model:roadVehicleAt(i),color:new THREE.Color(palette[i%palette.length])}));
+  const traffic = cars.map(({model},id) => ({id,kind:model.kind,x:0,y:0,z:0,yaw:0,halfWidth:model.halfWidth,halfLength:model.halfLength,height:model.height,active:false,destroyed:false,previous:null}));
+  const fleet=buildRoadFleet(cars,instances,{box,tyre:wheelGeo,hub:wheelGeo,beam:beamGeo},{
+    paint:carPaint,glass:carGlass,trim:tires,tyre:tires,hub:chrome,headlamp,taillamp,
+    brake:new THREE.MeshBasicMaterial({color:0xff4536}),beam:beamMat,
+  });
 
   const shirts=instances(capsule,material(0xffffff),peopleCount), heads=instances(sphere,material(0xffffff),peopleCount);
   const legs=instances(capsule,material(0x2e3944),peopleCount*2), arms=instances(capsule,material(0xffffff),peopleCount*2);
+  const hair=instances(sphere,material(0x372b26),peopleCount), shoes=instances(box,tires,peopleCount*2);
+  const bags=instances(box,material(0xb18254),peopleCount);
+  const stains=instances(sphere,material(0x973c3c),peopleCount);
+  stains.name='Clothing stains'; stains.castShadow=false;
   const skin=[0x9e7154,0xbe8d69,0x80563e,0xd3a980], clothing=[0xbd7259,0xe0d4b2,0x4d758d,0x6c8070,0xe4e3dd,0x8b7493];
   const people=Array.from({length:peopleCount},(_,i)=>({
+    id:i, style:['commuter','jogger','stroller'][i%3],
     x:i%3===0 ? 45+random()*3 : -126+random()*8,
     z:-390+random()*780, direction:i%2 ? 1 : -1, speed:0.75+random()*0.65, phase:random()*Math.PI*2, scale:0.9+random()*0.17,
   }));
@@ -58,48 +64,64 @@ export function buildCityLife() {
     part.position.set(...pos); part.scale.set(...scale); part.rotation.set(angle,0,0); part.updateMatrix();
     matrix.multiplyMatrices(root.matrix,part.matrix); mesh.setMatrixAt(index,matrix);
   }
-  let travelled=[0,0];
   function update(elapsed,delta,solar,options) {
     group.visible=options.cityLife;
-    people.forEach(p=>{p.active=false;});
-    traffic.forEach(car => { car.active=false; });
-    if(!group.visible) return;
+    people.forEach(p=>{
+      p.active=false;
+      if(p.impact)p.impact.age+=delta;
+    });
+    if(!group.visible) {
+      traffic.forEach(car => { car.active=false; });
+      return;
+    }
     const visibleCars=options.quality==='low' ? 20 : carCount, visiblePeople=options.quality==='low' ? 28 : peopleCount;
-    bodies.count=cabins.count=roofs.count=beams.count=visibleCars; fronts.count=backs.count=visibleCars*2; wheels.count=hubs.count=visibleCars*4;
+    fleet.setCount(visibleCars);
+    for(let i=visibleCars;i<carCount;i++) traffic[i].active=false;
     shirts.count=heads.count=visiblePeople; legs.count=arms.count=visiblePeople*2;
+    hair.count=visiblePeople;shoes.count=visiblePeople*2;bags.count=0;stains.count=0;
     headlamp.emissiveIntensity=0.25+solar.night*4; taillamp.emissiveIntensity=0.4+solar.night*2; beamMat.opacity=solar.night*0.2;
-    travelled=travelled.map((distance,i)=>(distance+delta*9/lengths[i])%1);
     for(let i=0;i<visibleCars;i++) {
-      const car=cars[i], direction=car.route===0 ? 1 : -1, t=((car.progress+travelled[car.route]*direction)%1+1)%1;
+      const car=cars[i], direction=car.route===0 ? 1 : -1, vehicle=traffic[i];
+      const inset=car.route===0?-3:3;
+      if(car.t===undefined)car.t=car.progress;
+      routes[car.route].getPointAt(car.t,position);
+      const cornerDistance=Math.hypot(Math.min(Math.abs(position.x-65-inset),Math.abs(position.x-425+inset)),
+        Math.min(Math.abs(position.z+600-inset),Math.abs(position.z-360+inset)));
+      const speed=vehicle.destroyed?0:4+7*THREE.MathUtils.smoothstep(cornerDistance,12,65);
+      if(delta>0)vehicle.acceleration=Number.isFinite(vehicle.speed)?(speed-vehicle.speed)/delta:0;
+      vehicle.speed=speed;
+      const t=car.t=THREE.MathUtils.euclideanModulo(car.t+speed*delta*direction/lengths[car.route],1);
       routes[car.route].getPointAt(t,position); routes[car.route].getTangentAt(t,tangent);
-      const vehicle=traffic[i];
-      vehicle.previous=vehicle.initialized ? {x:vehicle.x,z:vehicle.z} : {x:position.x,z:position.z};
+      const previous=vehicle.active ? {x:vehicle.x,z:vehicle.z} : null;
       if(!vehicle.destroyed) {vehicle.x=position.x;vehicle.z=position.z;vehicle.yaw=Math.atan2(tangent.x*direction,tangent.z*direction);}
-      vehicle.active=true; vehicle.initialized=true;
-      root.position.set(vehicle.x,0,vehicle.z); root.rotation.set(0,vehicle.yaw,vehicle.destroyed ? 0.1 : 0); root.scale.set(1,1,car.bus ? 1.65 : 1); root.updateMatrix();
-      place(bodies,i,[0,0.66,0],[1.85,0.66,4.1]); place(cabins,i,[0,1.23,-0.2],[1.6,0.63,2.25]); place(roofs,i,[0,1.57,-0.2],[1.65,0.12,1.95]);
-      for(let j=0;j<4;j++) {
-        const x=j%2 ? 0.91 : -0.91,z=j<2 ? -1.28 : 1.28;
-        place(wheels,i*4+j,[x,0.35,z]); place(hubs,i*4+j,[x*1.12,0.35,z],[1.05,0.6,0.6]);
-      }
-      for(let side=0;side<2;side++) {
-        place(fronts,i*2+side,[side ? 0.63 : -0.63,0.8,2.06],vehicle.destroyed ? [0,0,0] : [0.44,0.2,0.06]);
-        place(backs,i*2+side,[side ? 0.65 : -0.65,0.82,-2.06],vehicle.destroyed ? [0,0,0] : [0.36,0.17,0.06]);
-      }
-      place(beams,i,[0,0.065,5],vehicle.destroyed ? [0,0,0] : [5,1,8]);
+      vehicle.previous=previous ?? {x:vehicle.x,z:vehicle.z};
+      vehicle.active=true;
+      root.position.set(vehicle.x,0,vehicle.z); root.rotation.set(0,vehicle.yaw,vehicle.destroyed ? 0.1 : 0); root.scale.setScalar(1); root.updateMatrix();
+      fleet.place(i,root.matrix,!vehicle.destroyed,vehicle.acceleration < -0.3);
     }
     for(let i=0;i<visiblePeople;i++) {
       const p=people[i]; p.active=true;
-      if(!p.impact) {p.z+=p.direction*p.speed*delta; if(p.z>415) p.z=-415; if(p.z<-415) p.z=415;}
-      else {p.impact.age+=delta;p.x+=p.impact.vx*delta*Math.exp(-p.impact.age*3);p.z+=p.impact.vz*delta*Math.exp(-p.impact.age*3);}
-      const stride=Math.sin(elapsed*p.speed*5+p.phase)*0.45;
+      const resting=p.style==='stroller' && (elapsed+p.phase*3)%18<4;
+      p.walking=!resting && !p.impact;
+      const pace=p.style==='jogger'?1.65:1;
+      if(!p.impact) {p.z+=p.direction*p.speed*pace*(resting?0:1)*delta; if(p.z>415) p.z=-415; if(p.z<-415) p.z=415;}
+      else {p.x+=p.impact.vx*delta*Math.exp(-p.impact.age*3);p.z+=p.impact.vz*delta*Math.exp(-p.impact.age*3);}
+      const stride=resting||p.impact?0:Math.sin(elapsed*p.speed*pace*5+p.phase)*0.45;
       root.position.set(p.x,0.04,p.z); root.rotation.set(0,p.direction>0 ? 0 : Math.PI,0); root.scale.setScalar(p.scale); root.updateMatrix();
       if(p.impact) {root.position.y=0.2;root.rotation.z=Math.min(1,p.impact.age*3)*Math.PI/2;root.updateMatrix();}
       place(shirts,i,[0,1.1,0],[1.65,0.8,1]); place(heads,i,[0,1.64,0],[0.16,0.2,0.16]);
+      place(hair,i,[0,1.75,-0.015],[0.167,p.style==='jogger'?0.08:0.12,0.17]);
+      if(p.style==='commuter')place(bags,bags.count++,[0,1.17,-0.15],[0.31,0.36,0.16]);
+      if(p.impact && p.impact.age<3) {
+        const size=0.08*Math.min(1,0.3+p.impact.age*5,(3-p.impact.age)*2);
+        place(stains,stains.count++,[0.05,1.14,0.106],[size,size*1.3,0.026]);
+      }
       for(let side=0;side<2;side++) {
         const sign=side ? 1 : -1;
         place(legs,i*2+side,[sign*0.11,0.46,sign*stride*0.24],[0.78,1.05,0.78],sign*stride);
-        place(arms,i*2+side,[sign*0.27,1.08,-sign*stride*0.2],[0.65,0.82,0.65],-sign*stride);
+        place(shoes,i*2+side,[sign*0.11,0.13,sign*stride*0.43+0.055],[0.15,0.12,0.26]);
+        const gesture=resting&&side===1?0.7+0.22*Math.sin(elapsed*3+p.phase):0;
+        place(arms,i*2+side,[sign*0.27,1.08+gesture*0.12,-sign*stride*0.2+gesture*0.12],[0.65,0.82,0.65],-sign*stride-gesture);
       }
     }
     group.children.forEach(mesh=>{ if(mesh.isInstancedMesh) mesh.instanceMatrix.needsUpdate=true; });
@@ -109,9 +131,8 @@ export function buildCityLife() {
     traffic.forEach((car,i)=>{
       if(!car.active || car.destroyed || Math.hypot(car.x-center.x,1-(center.y??1),car.z-center.z)>radius) return;
       car.destroyed=true;hit.push({x:car.x,y:1,z:car.z});
-      bodies.setColorAt(i,new THREE.Color(0x252624));roofs.setColorAt(i,new THREE.Color(0x242322));
+      fleet.setPaint(i,new THREE.Color(0x252624));
     });
-    if(hit.length) {bodies.instanceColor.needsUpdate=true;roofs.instanceColor.needsUpdate=true;}
     people.forEach(p=>{
       if(!p.active || p.impact || Math.hypot(p.x-center.x,1-(center.y??1),p.z-center.z)>radius) return;
       const distance=Math.max(1,Math.hypot(p.x-center.x,p.z-center.z));
@@ -120,10 +141,10 @@ export function buildCityLife() {
     return hit;
   }
   function resetTraffic() {
-    travelled=[0,0];
+    cars.forEach(car=>{car.t=car.progress;});
     people.forEach(p=>{if(p.impact){p.x=p.impact.originalX;p.z=p.impact.originalZ;}p.impact=null;});
-    traffic.forEach((car,i)=>{car.destroyed=false;car.initialized=false;bodies.setColorAt(i,cars[i].color);roofs.setColorAt(i,cars[i].color);});
-    bodies.instanceColor.needsUpdate=true;roofs.instanceColor.needsUpdate=true;
+    stains.count=0;
+    traffic.forEach((car,i)=>{car.destroyed=false;car.active=false;car.speed=undefined;car.acceleration=0;fleet.setPaint(i,cars[i].color);});
   }
   return {group,update,traffic,people,blast,resetTraffic};
 }
