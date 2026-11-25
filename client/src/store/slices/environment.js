@@ -22,8 +22,6 @@ export const useEnvironmentStore = create((set) => ({
   obstacles: [],
   /** @type {Array<{id:string, position:{x:number,z:number}, heading:number, size:number, label:string}>} */
   landingPads: [],
-  /** Wind configuration – visual only in Phase 1, wired to SITL in Phase 2 */
-  wind: { speedMs: 0, directionDeg: 0, appliedToSitl: false },
 
   addObstacle: (obj) => set((s) => ({ obstacles: [...s.obstacles, obj] })),
   removeObstacle: (id) => set((s) => ({ obstacles: s.obstacles.filter((o) => o.id !== id) })),
@@ -33,6 +31,12 @@ export const useEnvironmentStore = create((set) => ({
   addLandingPad: (pad) => set((s) => ({ landingPads: [...s.landingPads, pad] })),
   removeLandingPad: (id) => set((s) => ({ landingPads: s.landingPads.filter((p) => p.id !== id) })),
 
-  setWind: (patch) => set((s) => ({ wind: { ...s.wind, ...patch } })),
-  resetEnvironment: () => set({ obstacles: [], landingPads: [], wind: { speedMs: 0, directionDeg: 0, appliedToSitl: false } }),
+  setWind: ({ speedMs, directionDeg }) => set(({ wind }) => ({
+    wind: {
+      speedMs: Number.isFinite(speedMs) ? Math.min(18, Math.max(0, speedMs)) : wind.speedMs,
+      directionDeg: Number.isFinite(directionDeg) ? ((directionDeg % 360) + 360) % 360 : wind.directionDeg,
+      appliedToSitl: false,
+    },
+  })),
+  resetEnvironment: () => set({ obstacles: [], landingPads: [], wind: ENVIRONMENT_DEFAULTS.wind }),
 }));

@@ -72,6 +72,9 @@ import {
 import { createExplosionEffects } from "./world/ExplosionEffects.js";
 import { createChallengeActors } from "./world/ChallengeActors.js";
 import { PORT_SPAWN } from "./world/PortCity.js";
+import { buildStreamingCoast } from "./world/StreamingCoast.js";
+import { buildOpenOcean } from "./world/OceanSurface.js";
+import { coastX, groundAt, launchGuide, settleOnTerrain, viewRange } from "./world/coastalTerrain.js";
 
 // ── Altitude indicator ────────────────────────────────────────────────────────
 
@@ -180,7 +183,16 @@ export default function SimulatorWorld() {
     let frames = 0,
       measuredAt = performance.now();
     function renderFrame() {
-      sky.updatePrecipitation(elapsed, weather, currentQuality, camera);
+      let reach = 0;
+      if (coast) {
+        camera.position.y = Math.max(camera.position.y, groundAt(camera.position.x,camera.position.z)+0.18);
+        reach = viewRange(camera.position.y);
+        coast.update(camera.position,currentQuality);
+        sea.update(camera.position,currentQuality,2**Math.ceil(Math.log2(reach))*3);
+      }
+      const far = reach ? Math.max(20000, 4*2**Math.ceil(Math.log2(reach))) : 20000;
+      if (far !== camera.far) { camera.far=far; camera.updateProjectionMatrix(); }
+      sky.updateCameraWeather(elapsed, weather, currentQuality, camera, useSimulatorStore.getState().flightSource === "demo",reach);
       if (composer && currentQuality === "high") composer.render();
       else renderer.render(scene, camera);
       frames++;
@@ -239,6 +251,13 @@ export default function SimulatorWorld() {
 
     // ── Environment ────────────────────────────────────────────────────────
     const sky = buildSkyEnvironment(scene);
+    let coast, sea;
+    function releaseCoast() {
+      if (!coast) return;
+      scene.remove(coast.group,sea.mesh);
+      coast.dispose(); sea.dispose();
+      coast=sea=null;
+    }
     const sampleWeather = createStormClock();
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     let weather;
@@ -379,6 +398,7 @@ export default function SimulatorWorld() {
         ? createFlight()
         : { ...PORT_SPAWN };
     let demo = spawnFlight();
+    let launch = {...demo};
     smoothPos.set(demo.x, demo.y, demo.z);
     let lastInstrumentTime = -Infinity;
     let lastPathSampleTime = -Infinity;
@@ -430,6 +450,7 @@ export default function SimulatorWorld() {
       if (sim.restartSerial !== lastRestart) {
         if (sim.isRecording) sim.stopRecording();
         demo = spawnFlight();
+        launch = {...demo};
         smoothPos.set(demo.x, demo.y, demo.z);
         destroyed = false;
         renderYaw = 0;
@@ -484,6 +505,14 @@ export default function SimulatorWorld() {
         clockAccumulator = 0;
       }
       const environment = useEnvironmentStore.getState();
+      const explore=sim.flightSource==="demo" && !activeChallenge && cityGroup.visible;
+      if (explore && !coast) {
+        coast=buildStreamingCoast(); sea=buildOpenOcean(sky.ocean);
+        scene.add(coast.group,sea.mesh);
+      } else if (!explore) releaseCoast();
+      city.cityBase.visible=!explore;
+      sky.ocean.visible=cityGroup.visible && !explore;
+      coast?.updateLandmarks(demo);
       updateQuality(environment.quality);
       weather = sampleWeather(elapsed, sim.flightSource === "demo" ? environment.weatherMode : "clear", reducedMotion?.matches);
       const solar = sky.update(elapsed, environment, camera, smoothPos, weather);
@@ -515,7 +544,10 @@ export default function SimulatorWorld() {
         renderFrame();
         return;
       }
-      const activeBuildingBoxes = cityGroup.visible ? buildingBoxes : [];
+      const nearCity=demo.x>-750 && demo.x<1200 && Math.abs(demo.z)<1500;
+      const activeBuildingBoxes = coast
+        ? [...(nearCity ? buildingBoxes : []), ...Array.from(coast.landmarks.values(), entry=>entry.box)]
+        : cityGroup.visible ? buildingBoxes : [];
 
       // ── Telemetry → position ───────────────────────────────────────────
       const {
@@ -552,12 +584,14 @@ export default function SimulatorWorld() {
         // One capped step per rendered frame made flight crawl on slow devices.
         let proposed = demo;
         if (!destroyed)
-          for (let remaining = dt; remaining > 0.000001; remaining -= 0.05)
+          for (let remaining = dt; remaining > 0.000001; remaining -= 0.05) {
             proposed = stepFlight(
               proposed,
               demoInput,
               Math.min(0.05, remaining),
             );
+            if(coast) proposed=settleOnTerrain(proposed);
+          }
         const position = moveAroundBuildings(
           demo,
           proposed,
@@ -571,11 +605,15 @@ export default function SimulatorWorld() {
           z: position.z,
           grounded: position.y === 0,
         };
+        if(coast) demo=settleOnTerrain(demo);
         targetPos.set(demo.x, demo.y, demo.z);
         if (sim.isGrounded !== demo.grounded) sim.setGrounded(demo.grounded);
         if (now - lastInstrumentTime >= 100) {
           sim.setDemoData({
             ...flightInstruments(demo, previous, dt, demoInput),
+            launchGuide:coast ? launchGuide(demo,launch) : null,
+            location:coast ? [...coast.landmarks.values()].find(({site})=>
+              Math.hypot(site.x-demo.x,site.y-demo.y,site.z-demo.z)<160)?.site.name : null,
             isArmed: !destroyed && !demo.grounded,
           });
           lastInstrumentTime = now;
@@ -717,7 +755,7 @@ export default function SimulatorWorld() {
             );
         }
         lastChallengeElapsed = elapsed;
-        let ground = 0;
+        let ground = coast ? groundAt(targetPos.x,targetPos.z) : 0;
         for (const box of activeBuildingBoxes) {
           if (
             targetPos.x >= box.min.x &&
@@ -735,6 +773,7 @@ export default function SimulatorWorld() {
       }
 
       smoothPos.lerp(targetPos, 1 - Math.exp(-dt * 8));
+      if(coast) smoothPos.y=Math.max(smoothPos.y,groundAt(smoothPos.x,smoothPos.z));
       if (now - lastPathSampleTime >= 100) {
         sim.recordPosition({
           x: targetPos.x,
@@ -792,9 +831,10 @@ export default function SimulatorWorld() {
       // Altitude drop-line
       altInd.group.position.copy(smoothPos);
       const linePts = altInd.lineGeo.attributes.position;
-      linePts.setXYZ(1, 0, -smoothPos.y + 0.09, 0);
+      const groundBelow=coast ? groundAt(smoothPos.x,smoothPos.z) : 0;
+      linePts.setXYZ(1, 0, groundBelow - smoothPos.y + 0.09, 0);
       linePts.needsUpdate = true;
-      altInd.group.children[1].position.y = -smoothPos.y + 0.08;
+      altInd.group.children[1].position.y = groundBelow - smoothPos.y + 0.08;
       altInd.group.visible = cameraMode !== "fpv" && !destroyed;
 
       // ── Telemetry → attitude ───────────────────────────────────────────
@@ -871,7 +911,7 @@ export default function SimulatorWorld() {
           x: camera.position.x,
           z: camera.position.z,
           coastDistance: Math.min(
-            Math.abs(camera.position.x + 145),
+            Math.abs(camera.position.x - (coast ? coastX(camera.position.z) : -145)),
             camera.position.z < -350 && camera.position.z > -950
               ? Math.abs(camera.position.x + 452)
               : Infinity,
@@ -926,6 +966,7 @@ export default function SimulatorWorld() {
       disposeFlightAudio();
       ro.disconnect();
       controls.dispose();
+      releaseCoast();
       sky.dispose();
       disposeCity();
       if (tilesRef.current) {

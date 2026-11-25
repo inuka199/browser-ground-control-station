@@ -55,13 +55,14 @@ export function buildStormEffects(group) {
       const n = dropsByQuality[quality] ?? dropsByQuality.balanced;
       const eye = camera.position;
       const floor = Math.max(0, eye.y - 14);
+      rain.position.set(2048*Math.trunc(eye.x/2048),2048*Math.trunc(eye.y/2048),2048*Math.trunc(eye.z/2048));
       for (let i = 0; i < n; i++) {
         const drop = seeds[i];
         const x = eye.x - 22 + wrap(drop.x + time * 2.6 - eye.x, 44);
         const y = floor + wrap(drop.y - time * drop.speed - floor, 28);
         const z = eye.z - 22 + wrap(drop.z - eye.z, 44);
-        points.setXYZ(i * 2, x, y, z);
-        points.setXYZ(i * 2 + 1, x - 0.09, y + drop.length, z);
+        points.setXYZ(i * 2, x-rain.position.x, y-rain.position.y, z-rain.position.z);
+        points.setXYZ(i * 2 + 1, x-rain.position.x-0.09, y-rain.position.y+drop.length, z-rain.position.z);
       }
       geometry.setDrawRange(0, n * 2);
       points.needsUpdate = true;

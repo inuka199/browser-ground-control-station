@@ -72,7 +72,7 @@ export function buildProceduralWorld() {
   }
 
   // The shoreline remains open to the animated ocean. Land starts at x=-140.
-  plane(stone, 930, 0, 2140, 2600, -0.24, 10);
+  const cityBase=plane(stone, 930, 0, 2140, 2600, -0.24, 10);
   plane(grass,-35,0,186,1650,-0.16,7);
   plane(paving,-121,0,30,1650,0,5);
   plane(paving,0,0,75,65,0.01,5);
@@ -228,7 +228,7 @@ export function buildProceduralWorld() {
   const life = buildCityLife(); group.add(life.group);
   const localLights = [-30,30].map(z => { const light=new THREE.PointLight(0xffd49b,0,23,2); light.position.set(4,6,z); group.add(light); return light; });
   return {
-    group, padPositions, buildingBoxes, traffic:life.traffic, people:life.people, blast:life.blast, resetTraffic:life.resetTraffic,
+    group, cityBase, padPositions, buildingBoxes, traffic:life.traffic, people:life.people, blast:life.blast, resetTraffic:life.resetTraffic,
     update(elapsed, delta, solar, options, camera) {
       port.update(elapsed,solar);
       windows.forEach(m => { m.emissiveIntensity=solar.night*1.15; });

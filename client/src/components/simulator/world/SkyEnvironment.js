@@ -4,6 +4,7 @@ import { seededRandom, disposeObject } from './sceneUtils.js';
 import { glowTexture } from './cityTextures.js';
 import { waterVertex, waterFragment, oceanGeometry } from './OceanSurface.js';
 import { buildStormEffects } from './StormEffects.js';
+import { buildCloudLayer } from './CloudLayer.js';
 
 const skyVertex = /* glsl */ `
 #include <common>
@@ -17,14 +18,11 @@ void main() {
 const skyFragment = /* glsl */ `
 #include <logdepthbuf_pars_fragment>
 uniform vec3 sunDirection;
-uniform float daylight, golden, time, haze;
+uniform float daylight, golden, haze;
 uniform float rainAmount, lightning;
+uniform float openHorizon;
+uniform vec3 horizonFog;
 varying vec3 vDirection;
-float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float noise(vec2 p) {
-  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(hash(i), hash(i + vec2(1,0)), f.x), mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
-}
 void main() {
   #include <logdepthbuf_fragment>
   vec3 ray = normalize(vDirection);
@@ -37,14 +35,7 @@ void main() {
   color += vec3(1.0,0.69,0.36) * pow(sunDot, 18.0) * (0.16 + golden * 0.42) * daylight;
   color += vec3(4.0,3.3,2.2) * smoothstep(0.99972,0.9999,sunDot) * daylight;
   color = mix(color, mix(vec3(0.014,0.019,0.033),vec3(0.19,0.23,0.28),daylight),rainAmount*0.86);
-  if (ray.y > 0.018) {
-    vec2 p = ray.xz / (ray.y + 0.13) * 2.1 + vec2(time * 0.004, time * 0.001);
-    float cloud = noise(p) * 0.55 + noise(p * 2.07) * 0.28 + noise(p * 4.1) * 0.12 + noise(p * 8.3) * 0.05;
-    float cover = smoothstep(0.49-rainAmount*0.25, 0.73-rainAmount*0.16, cloud) * smoothstep(0.018,0.16,ray.y) * 0.8;
-    vec3 cloudColor = mix(vec3(0.055,0.075,0.12), mix(vec3(0.88,0.91,0.92),vec3(1.0,0.70,0.47),golden * 0.5),daylight);
-    cloudColor *= 1.0 - 0.76 * rainAmount;
-    color = mix(color, cloudColor, cover);
-  }
+  color = mix(color,horizonFog,openHorizon*(1.0-smoothstep(0.0,0.13,abs(max(ray.y,0.0)))));
   gl_FragColor = vec4(color + vec3(0.18,0.21,0.28)*lightning, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -56,8 +47,9 @@ export function buildSkyEnvironment(scene) {
   const uniforms = {
     time: { value: 0 }, daylight: { value: 1 }, golden: { value: 0 }, haze: { value: 0.35 },
     sunDirection: { value: new THREE.Vector3() },
-    rainAmount: { value: 0 }, lightning: { value: 0 },
+    rainAmount: { value: 0 }, lightning: { value: 0 }, openHorizon:{value:0}, horizonFog:{value:new THREE.Color()},
   };
+  const updateClouds = buildCloudLayer(group, uniforms);
   const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 32, 16), new THREE.ShaderMaterial({
     uniforms, vertexShader: skyVertex, fragmentShader: skyFragment, side: THREE.BackSide, depthWrite: false,
   }));
@@ -76,6 +68,7 @@ export function buildSkyEnvironment(scene) {
   const stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xdbe9ff, size: 1.4, sizeAttenuation: false, transparent: true, depthWrite: false, fog: false })); group.add(stars);
   const moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xdbedff, transparent: true, depthWrite: false, fog: false })); moon.scale.set(190,190,1); group.add(moon);
   const moonDisc = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, depthWrite: false, fog: false })); moonDisc.scale.set(44,44,1); group.add(moonDisc);
+  stars.renderOrder = moon.renderOrder = moonDisc.renderOrder = -2;
   const ambient = new THREE.HemisphereLight(0xc4deef, 0x807257, 1.5); group.add(ambient);
   const sun = new THREE.DirectionalLight(0xffefda, 3.5); sun.castShadow = true;
   sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.near = 1; sun.shadow.camera.far = 1200;
@@ -84,9 +77,10 @@ export function buildSkyEnvironment(scene) {
   group.add(sun, sun.target);
   const moonlight = new THREE.DirectionalLight(0x9fbfff, 0.3); group.add(moonlight, moonlight.target);
   const daylightFog = new THREE.Color(0xa3bdc9), sunsetFog = new THREE.Color(0xbe9277), nightFog = new THREE.Color(0x111e33);
-  let quality;
+  let quality, wind, baseFogDensity;
   function update(elapsed, options, camera, focus, weather) {
     const state = solarState(options.timeOfDay);
+    wind = options.wind;
     uniforms.rainAmount.value = weather.rain; uniforms.lightning.value = weather.flash;
     uniforms.time.value = elapsed; uniforms.daylight.value = state.daylight; uniforms.golden.value = state.golden; uniforms.haze.value = options.haze;
     const direction = uniforms.sunDirection.value.set(Math.cos(state.angle) * 0.82, state.elevation, -0.36).normalize();
@@ -103,7 +97,8 @@ export function buildSkyEnvironment(scene) {
     moonlight.intensity = state.night * 0.55; moonlight.target.position.copy(focus); moonlight.position.copy(focus).addScaledVector(direction,-500);
     fog.color.copy(nightFog).lerp(daylightFog, state.daylight).lerp(sunsetFog, state.golden * 0.5);
     fog.color.multiplyScalar(1-weather.rain*0.44);
-    fog.density = 0.00022 + options.haze * 0.00075 + weather.rain * 0.00095; waterUniforms.fogDensity.value = fog.density;
+    baseFogDensity = 0.00022 + options.haze * 0.00075 + weather.rain * 0.00095;
+    fog.density = waterUniforms.fogDensity.value = baseFogDensity;
     scene.environmentIntensity = 0.12 + state.daylight * 0.65;
     if (quality !== options.quality) {
       quality = options.quality; sun.castShadow = quality !== 'low';
@@ -113,5 +108,19 @@ export function buildSkyEnvironment(scene) {
     }
     return state;
   }
-  return { update, updatePrecipitation, ocean, dispose() { disposeObject(group); scene.remove(group); scene.fog = null; } };
+  // Sample the active camera after its rig has moved, including while paused.
+  function updateCameraWeather(elapsed, weather, quality, camera, offline, reach=0) {
+    const water = updateClouds(elapsed, wind, weather.rain, quality, camera, offline);
+    const air=reach ? Math.max(3/reach,baseFogDensity/(1+Math.max(0,camera.position.y-150)/500)) : baseFogDensity;
+    fog.density = waterUniforms.fogDensity.value = air + water * 0.033;
+    uniforms.openHorizon.value=reach?1:0;
+    uniforms.horizonFog.value.copy(fog.color);
+    const scale=reach ? Math.max(1,camera.far/10500) : 1;
+    sky.scale.setScalar(scale); stars.scale.setScalar(scale);
+    sky.position.copy(camera.position); stars.position.copy(camera.position);
+    moon.position.copy(camera.position).addScaledVector(uniforms.sunDirection.value,-8200*scale);
+    moonDisc.position.copy(moon.position); moon.scale.setScalar(190*scale); moonDisc.scale.setScalar(44*scale);
+    updatePrecipitation(elapsed, weather, quality, camera);
+  }
+  return { update, updateCameraWeather, ocean, dispose() { disposeObject(group); scene.remove(group); scene.fog = null; } };
 }

@@ -6,6 +6,7 @@ export const ENVIRONMENT_DEFAULTS = {
   cityLife: true,
   haze: 0.35,
   weatherMode: 'auto',
+  wind: { speedMs: 4, directionDeg: 90, appliedToSitl: false },
 };
 
 export function wrapHour(hour) { return ((hour % 24) + 24) % 24; }

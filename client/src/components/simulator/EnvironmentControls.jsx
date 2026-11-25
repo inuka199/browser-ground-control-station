@@ -13,6 +13,7 @@ export default function EnvironmentControls({ compact = false, children }) {
   const minutes=useEnvironmentStore(s=>s.cycleMinutes), quality=useEnvironmentStore(s=>s.quality);
   const cityLife=useEnvironmentStore(s=>s.cityLife), haze=useEnvironmentStore(s=>s.haze);
   const weatherMode=useEnvironmentStore(s=>s.weatherMode);
+  const wind=useEnvironmentStore(s=>s.wind);
   const tilesStatus=useSimulatorStore(s=>s.tilesStatus);
   const actions=useEnvironmentStore.getState();
   useEffect(()=>{
@@ -39,6 +40,14 @@ export default function EnvironmentControls({ compact = false, children }) {
           <option value="auto">Occasional storms</option>
           <option value="storm">Thunderstorm</option>
           <option value="clear">Clear skies</option>
+        </select>
+      </label>
+      <label className="environment-range"><span>Cloud wind speed <output>{wind.speedMs} m/s</output></span>
+        <input aria-label="Cloud wind speed" type="range" min="0" max="18" step="1" value={wind.speedMs} onChange={e=>actions.setWind({speedMs:Number(e.target.value)})}/>
+      </label>
+      <label className="environment-select"><span>Clouds drift toward</span>
+        <select value={wind.directionDeg} onChange={e=>actions.setWind({directionDeg:Number(e.target.value)})}>
+          {['North','Northeast','East','Southeast','South','Southwest','West','Northwest'].map((name,i)=><option key={name} value={i*45}>{name}</option>)}
         </select>
       </label>
       <label className="environment-check"><span>Traffic & pedestrians</span><input type="checkbox" disabled={tilesStatus==='ready'} checked={cityLife} onChange={e=>actions.setCityLife(e.target.checked)}/></label>

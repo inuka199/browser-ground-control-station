@@ -13,6 +13,8 @@ import { useAirspaceStore, joinAirspace, leaveAirspace, validPeer } from '../ser
 import MissionEditor from '../components/views/MissionEditor.jsx';
 import TrainingView from '../components/views/TrainingView.jsx';
 import GadgetsView from '../components/views/GadgetsView.jsx';
+import EnvironmentControls from '../components/simulator/EnvironmentControls.jsx';
+import { useEnvironmentStore } from '../store/slices/environment.js';
 
 const path = [{x:0,y:0,z:0,t:0},{x:10,y:0,z:0,t:1000},{x:20,y:0,z:0,t:9000}];
 beforeEach(() => {
@@ -22,6 +24,35 @@ beforeEach(() => {
   useCommandStore.setState({state:'idle',label:null,history:[]});
 });
 afterEach(() => { cleanup(); leaveAirspace(); vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+it('lets a pilot preview a storm, clear it and restore the automatic cycle from flight settings', () => {
+  render(<EnvironmentControls compact />);
+  fireEvent.keyDown(window, {code:'KeyI'});
+  const weather=screen.getByRole('combobox',{name:/simulator weather/i});
+  expect(weather).toHaveValue('auto');
+  for(const mode of ['storm','clear','auto']){
+    fireEvent.change(weather,{target:{value:mode}});
+    expect(useEnvironmentStore.getState().weatherMode).toBe(mode);
+    expect(weather).toHaveValue(mode);
+  }
+});
+
+it('adjusts local cloud wind from flight settings, including a calm wind', () => {
+  const original = useEnvironmentStore.getState().wind;
+  try {
+    render(<EnvironmentControls compact />);
+    fireEvent.keyDown(window, {code:'KeyI'});
+    const speed = screen.getByRole('slider',{name:'Cloud wind speed'});
+    const direction = screen.getByRole('combobox',{name:'Clouds drift toward'});
+    fireEvent.change(speed,{target:{value:'12'}});
+    fireEvent.change(direction,{target:{value:'315'}});
+    expect(useEnvironmentStore.getState().wind).toEqual({speedMs:12,directionDeg:315,appliedToSitl:false});
+    fireEvent.change(speed,{target:{value:'0'}});
+    expect(useEnvironmentStore.getState().wind.speedMs).toBe(0);
+  } finally {
+    useEnvironmentStore.setState({wind:original});
+  }
+});
 
 describe('recordings and route replay', () => {
   it('rejects malformed, non-finite and out-of-order imports', () => {

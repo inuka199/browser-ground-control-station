@@ -116,6 +116,16 @@ Google photorealistic tiles are optional: configure `VITE_GOOGLE_MAPS_API_KEY` i
 
 ## Coastal environment and graphics
 
+Offline free flight streams a seeded coast around the camera. Follow the shore beyond Colombo for bays and cape lights, head east over fields and ridges, or cross open water to offshore islands. Returning to a district restores the same terrain, road alignment and landmarks. The game keeps the original city at both launch pads. Online map tiles use their own scenery.
+
+Run `npm --prefix client run dev`, open the local Vite URL and launch **Galle Face** or **Port City**. For a short sightseeing flight from Galle Face, head north along the waterfront for about **1.5 km**. The first cape light stands roughly **125 m west** of the launch meridian. A location name appears within 160 m. Press **I** and enable **Show launch compass** to see the distance, bearing and arrow back to the pad you actually used.
+
+Hold **W** to climb and use the **Top** camera (**3**) for a wider view. A second cloud layer sits roughly 700–1,000 m above sea level. Descend inland with **S** to land on the hillside. The altitude instrument references launch elevation. The rangefinder shows clearance below the aircraft when enabled. Pause with **Esc** to freeze the flight and weather while changing camera views.
+
+**Graphics quality** controls terrain detail, wave mesh density, and cloud sampling. Land tiles use 16 m vertex spacing near the aircraft and progressively larger triangles toward the horizon. The game unloads distant generated geometry. The detailed launch city stays in memory. The coast and islands are fictional, with sea-level landing physics over open water.
+
+Run `node client/scripts/benchmark-coast.mjs` from the project root to measure CPU time for terrain, landmark and ocean updates across 100 streaming decisions on a 6.4 km route. The benchmark excludes GPU rendering, city animation and browser overhead.
+
 The simulator's existing Three.js renderer now includes a detailed, Colombo-inspired coastal district: windowed facades with nighttime occupancy lighting, roof equipment, sidewalks, lane markings, crossings, palms, leafy trees, benches, harbour cranes, and illuminated landing pads. The district is an illustrative environment, not a survey-accurate map. All scenery, materials, and aircraft are generated locally; no asset downloads or API keys are required.
 
 Open **Environment** in the simulator HUD or press **I**. Choose **Dawn**, **Day**, **Golden**, or **Night**, scrub the time slider, adjust coastal haze, or enable the continuous day/night cycle (2, 8, 20, or 60 real minutes per simulated day). Sunlight, moving clouds, moonlight, stars, ocean reflections, windows, lamps, and vehicle lights follow the selected time. The clock and city motion freeze with the pause menu. These visual settings do not change external SITL conditions.
@@ -125,6 +135,14 @@ Sedans, buses, delivery vans, open-bed pickups and three-wheeled tuk-tuks run on
 Joggers, backpack commuters and strolling pedestrians use the avenue and waterfront sidewalks. Strollers periodically stop and gesture. An existing simulated impact can leave a small red stain on clothing for three seconds of simulation time. Restarting clears the effect.
 
 Offshore swells move water vertices horizontally and vertically. Foam gathers along the higher crests. Swells weaken near the seawall and inside the marina, where boats follow the local water height and slope. The water clock freezes during pause.
+
+The offline simulator starts with **Occasional storms**. The first shower begins after 45–95 seconds of play. Showers last 25–40 seconds, with 90–180 seconds of clear weather between them. Rain builds and fades, clouds darken, and distant lightning is followed by thunder. Pausing freezes the weather clock. The operating system’s reduced-motion setting suppresses lightning flashes while keeping rain and thunder.
+
+To try it immediately, press **I**, open **Simulator weather** and select **Thunderstorm**. Choose **Clear skies** to end it or **Occasional storms** to restart the automatic cycle. Click the simulator to enable audio.
+
+In the offline game you can fly below, through, and above individual 3D clouds. From a fresh **Galle Face** launch, set **Cloud wind speed** to **0 m/s**, face north and fly about 135 m forward while climbing to roughly 115 m. Visibility falls inside the cloud and clears again above it. **Clouds drift toward** sets the direction of travel. The starting breeze carries low clouds east at 4 m/s, with faster drift higher up.
+
+The cloud model simulates rising and sinking air parcels. Cloud water forms above the condensation level and evaporates as the air sinks. Showers gradually lower the cloud base and deepen the clouds. Wind changes affect future drift, and pausing freezes cloud motion. These settings affect the offline atmosphere only. Aircraft handling and external SITL weather use their existing models.
 
 - **Low:** standard pixel density, fewer people and vehicles, no shadow map.
 - **Balanced** (default): capped 1.5× pixel density, 1024px sun shadows, full city activity.

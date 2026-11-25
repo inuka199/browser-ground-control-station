@@ -7,7 +7,8 @@ The software checks exercise the browser and bridge. Flight-controller evidence 
 | Check | Observed result |
 | --- | --- |
 | Bridge suite | 19 passed, including a real WebSocket connection over local IPC, a synthetic MAVLink source, session loss and parameter readback. |
-| Frontend and simulator suite | 169 passed. Includes home HUD, stale and out-of-order reports, traffic models, pedestrian behaviour, audio scheduling and ocean displacement. Audio tests use a test audio graph. |
+| Frontend and simulator suite | Covers home HUD, stale and out-of-order reports, traffic, pedestrians, cloud visibility, ocean displacement, storm timing and weather settings. Offline world tests cover a 40 km flight and hillside landing, an offshore island, tile eviction and regeneration, 100,000 km coordinates, a high-altitude camera, pause and weather transitions. |
+| Weather render | Software OpenGL rendered the production sky shader and rain and bolt geometry at four simulation times. The dry frame had no streaks, rain persisted after the lightning faded, and the strike added visible pixels. |
 | Ocean render | The production water shader sources with Three.js shader chunks compiled and linked in software OpenGL. A 6,264-triangle section of the actual mesh produced distinct frames at 0 and 2.5 simulated seconds. Full browser visual inspection and listening on a playback device remain outstanding. |
 | Lint and production build | Lint completed without findings. Vite built the frontend and reported a graphics bundle over its 500 kB warning threshold. |
 | Native WebSocket and UDP integration | Attempted with a synthetic peer. Windows denied the loopback TCP connection with EACCES, before the transport scenario could complete. |

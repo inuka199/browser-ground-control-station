@@ -50,7 +50,7 @@ it('renders bounded camera-local rain and a world-fixed bolt, then restores clea
   function draw(time,mode) {
     const w=sample(time,mode);
     sky.update(time,settings,camera,focus,w);
-    sky.updatePrecipitation(time,w,settings.quality,camera);
+    sky.updateCameraWeather(time,w,settings.quality,camera,true);
   }
   draw(0,'storm');
   const dryFog=scene.fog.density;

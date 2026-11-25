@@ -15,12 +15,14 @@ function Instrument({label,value,unit}) {
   return <div className="hud-instrument"><span className="hud-instr-label">{label}</span><span className="hud-instr-value">{value}<small> {unit}</small></span></div>;
 }
 export default function GameHUD({onPause,fcpOpen,onToggleFcp}) {
+  const [showGuide,setShowGuide]=React.useState(false);
   const {data:telemetry,status,now}=useTelemetryHealth();
   const sim=useSimulatorStore();
   const challenge=useChallengeStore(s=>s.active);
   const rangefinder=usePayloadStore(s=>s.rangefinder);
   const live=hasLivePosition(telemetry,status==='connected',now,sim.flightSource);
   const data=live ? telemetry : sim.demoData;
+  const guide=sim.flightSource==='demo' && !challenge && sim.tilesStatus!=='ready' && data.launchGuide;
   const attribution=sim.tilesEnabled && sim.tilesStatus!=='idle' && <div className="hud-tiles-attribution" aria-label="Map attribution">{sim.tilesAttribution}</div>;
   if(!sim.isHudVisible) return <><div className="hud-hidden-bar"><button className="hud-show-btn" onClick={sim.toggleHud}>Show controls · H</button></div>{attribution}</>;
   return <div className="game-hud simple-flight" aria-label="Flight HUD">
@@ -30,6 +32,9 @@ export default function GameHUD({onPause,fcpOpen,onToggleFcp}) {
       <div className="flight-actions"><SoundControls compact/><button onClick={onPause} title="Pause [Esc]">Pause</button></div>
     </div>
     <div className="flight-settings-anchor"><EnvironmentControls compact>
+      {guide && <label className="environment-check"><span>Show launch compass</span>
+        <input type="checkbox" checked={showGuide} onChange={e=>setShowGuide(e.target.checked)}/>
+      </label>}
       <details className="flight-advanced"><summary>Recording & flight tools</summary>
         <div className="flight-tool-buttons"><button onClick={sim.isRecording?sim.stopRecording:sim.startRecording} aria-pressed={sim.isRecording}>{sim.isRecording?'Stop & save recording':'Record flight'}</button>
         <Link to="/recordings">Recordings</Link><Link to="/challenges">Challenges</Link><Link to="/garage">Choose drone</Link>
@@ -49,6 +54,13 @@ export default function GameHUD({onPause,fcpOpen,onToggleFcp}) {
     {sim.cameraMode==='fpv' && <div className="hud-reticle" aria-hidden="true"><div className="reticle-h"/><div className="reticle-v"/><div className="reticle-ring"/></div>}
     {!live && sim.isGrounded && !sim.isDestroyed && <div className="flight-takeoff">Hold <kbd>W</kbd> to take off <span>· Arrows to fly</span></div>}
     <div className="hud-instruments">
+      {guide && showGuide && <div className="hud-instrument" aria-label="Direction to launch">
+        <span className="hud-instr-label">Launch point</span>
+        <span className="hud-instr-value">{guide.distance<5 ? 'Here' : <>
+          <span aria-hidden="true" style={{display:'inline-block',transform:'rotate('+guide.turn+'deg)'}}>↑</span>{' '}
+          {guide.distance<1000 ? Math.round(guide.distance)+' m' : (guide.distance/1000).toFixed(1)+' km'}
+          <small> {Math.round(guide.bearing)%360}°</small></>}</span>
+      </div>}
       <Instrument label="Altitude" value={number(data.relativeAltitude)} unit="m"/>
       <Instrument label="Speed" value={number(data.groundSpeed)} unit="m/s"/>
       <Instrument label="Heading" value={number(data.yaw,0)} unit="°"/>
@@ -56,5 +68,6 @@ export default function GameHUD({onPause,fcpOpen,onToggleFcp}) {
       {rangefinder && <Instrument label="Ground below" value={number(sim.rangefinderDistance)} unit="m"/>}
     </div>
     {attribution}
+    {guide && data.location && <output className="flight-location">{data.location}</output>}
   </div>;
 }
