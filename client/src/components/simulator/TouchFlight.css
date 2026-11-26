@@ -70,27 +70,7 @@
 .touch-flight .flight-recording { bottom: calc(var(--edge-b) + 150px); left: var(--edge-l); }
 .touch-flight .challenge-flight-panel { top: calc(var(--edge-t) + 108px); left: var(--edge-l); width: min(260px, 72vw); padding: 8px 12px; }
 .touch-flight .challenge-flight-panel h2, .touch-flight .challenge-flight-panel p, .touch-flight .challenge-flight-meta { margin: 4px 0; }
-.touch-flight .pause-overlay {
-  z-index: 45; padding: var(--edge-t) var(--edge-r) var(--edge-b) var(--edge-l); box-sizing: border-box;
-}
-.touch-flight .pause-panel {
-  box-sizing: border-box; width: min(420px, 100%); max-height: 100%; overflow: auto;
-  padding: 20px; border: 1px solid #7ba690; border-radius: 14px; background: #102326; color: #e4efe8;
-}
-.touch-flight .pause-panel button, .flight-install button {
-  border-radius: 7px; border: 1px solid #709787; background: #20453d; color: #edf9ef; padding: 7px 12px;
-}
-.touch-flight .pause-panel .pause-btn--primary { background: #b8dfc7; color: #13332d; font-weight: 650; }
-.touch-flight .pause-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.touch-flight .pause-panel:has(.touch-brief) .pause-settings { margin: 16px 0; }
-.touch-flight .pause-panel .pause-keys summary { display: list-item; padding-top: 10px; }
-.touch-brief p, .flight-install p { font-size: 13px; line-height: 1.5; margin: 8px 0; }
-.flight-install { margin-top: 16px; font-size: 13px; }
 .touch-flight .challenge-result { z-index: 32; }
-.touch-flight .rotate-title { margin: 14px 0 4px; font-size: 1.4rem; }
-.touch-flight .pause-panel .sim-environment { width: 100%; margin: 12px 0; }
-.touch-flight .pause-panel .environment-settings { max-height: none; }
-.touch-flight .pause-panel { overscroll-behavior: contain; }
 @media (orientation: landscape) {
   .touch-flight .game-hud.simple-flight {
     display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto;

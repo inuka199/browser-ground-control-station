@@ -1,0 +1,85 @@
+.flight-pause {
+  --pause-line: #354949;
+  --pause-muted: #a7bab6;
+  --pause-accent: #c5ecd8;
+  color-scheme: dark;
+  position: fixed;
+  inset: var(--edge-t, 0px) var(--edge-r, 0px) var(--edge-b, 0px) var(--edge-l, 0px);
+  margin: auto;
+  width: min(388px, calc(100% - var(--edge-l, 18px) - var(--edge-r, 18px)));
+  max-width: none;
+  max-height: calc(100% - var(--edge-t, 16px) - var(--edge-b, 16px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #546967;
+  border-radius: 16px;
+  padding: 0;
+  color: #f1f6f2;
+  background: #132325;
+  box-shadow: 0 16px 64px #07111266;
+  font: 400 14px/1.45 Inter, system-ui, sans-serif;
+}
+.flight-pause::backdrop { background: #0a181dc2; }
+.pause-layout { padding: 24px; }
+.pause-context { margin: 0 0 6px; color: var(--pause-muted); font-size: 12px; font-weight: 550; }
+.pause-context span { margin: 0 4px; color: #748e85; }
+.flight-pause h2 { margin: 0; font: 600 32px/1.12 Inter, system-ui, sans-serif; letter-spacing: -.035em; text-wrap: balance; }
+.pause-hint { margin: 8px 0 0; color: var(--pause-muted); }
+.pause-navigation { display: grid; grid-template-columns: 1.55fr 1fr; gap: 8px; margin: 20px 0 14px; }
+.flight-pause button, .flight-pause summary { font: inherit; cursor: pointer; }
+.pause-navigation button, .pause-tools button, .flight-install button {
+  min-height: 44px; padding: 8px 12px; border: 1px solid var(--pause-line); border-radius: 8px;
+  font-weight: 600; background: #203233; color: inherit;
+}
+.pause-navigation .pause-primary { background: var(--pause-accent); color: #153528; border-color: transparent; }
+.pause-primary::before {
+  content: ''; display: inline-block; margin-right: 9px;
+  border-block: 5px solid transparent; border-left: 8px solid currentColor;
+}
+.pause-navigation button:hover, .pause-tools button:hover, .flight-install button:hover { filter: brightness(1.1); }
+.flight-pause :focus-visible { outline: 2px solid #e9cf90; outline-offset: 2px; }
+.pause-section { border-top: 1px solid var(--pause-line); }
+.pause-section > summary {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 2px;
+  font-weight: 500; list-style: none;
+}
+.pause-section > summary::-webkit-details-marker { display: none; }
+.pause-section > summary::after {
+  content: ''; margin-left: auto; margin-right: 4px; width: 7px; height: 7px;
+  border: solid var(--pause-muted); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg);
+}
+.pause-section[open] > summary::after { transform: rotate(225deg); }
+.pause-section > summary:hover { color: var(--pause-accent); }
+.pause-section > summary small { color: var(--pause-accent); }
+.pause-preferences { padding: 0 6px 10px; }
+.pause-preferences label { display: flex; align-items: center; justify-content: space-between; min-height: 44px; gap: 8px; }
+.pause-preferences input { accent-color: var(--pause-accent); }
+.pause-preferences input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
+.pause-preferences .environment-range { display: grid; grid-template-columns: 1fr; justify-content: stretch; margin: 4px 0; gap: 0; font-size: 14px; color: inherit; }
+.pause-preferences .environment-range > span { display: flex; justify-content: space-between; color: inherit; }
+.pause-preferences .environment-range input { width: 100%; min-height: 28px; }
+.pause-preferences output, .pause-audio p, .pause-bindings dd, .pause-thumb-guide dd, .flight-install p { color: var(--pause-muted); }
+.pause-bindings, .pause-thumb-guide, .flight-install, .pause-tools { padding: 2px 2px 14px; }
+.pause-bindings > div { display: grid; grid-template-columns: 68px 1fr; align-items: baseline; gap: 10px; padding: 4px 0; }
+.pause-bindings kbd { color: #dfede5; font-size: 12px; }
+.pause-bindings dd, .pause-thumb-guide dd, .flight-install { font-size: 13px; }
+.pause-thumb-guide { display: grid; gap: 7px; margin-top: 10px; }
+.pause-thumb-guide dt { font-weight: 600; }
+.pause-thumb-guide dd, .pause-bindings dd { margin: 0; }
+.pause-tools { display: grid; gap: 6px; }
+.flight-install p { margin: 5px 0 0; line-height: 1.5; }
+.flight-install button { margin-top: 8px; }
+.flight-pause .sim-environment { width: 100%; border-top: 1px solid var(--pause-line); }
+.flight-pause .environment-toggle { padding-inline: 2px; box-shadow: none; background: transparent; border: 0; }
+.flight-pause .environment-toggle strong { font: 500 14px Inter, system-ui, sans-serif; letter-spacing: 0; }
+.flight-pause .environment-settings { position: static; width: auto; max-height: none; margin: 0 0 10px; }
+@media (orientation: landscape) and (max-height: 540px) and (min-width: 520px) {
+  .flight-pause { width: min(660px, calc(100% - var(--edge-l, 16px) - var(--edge-r, 16px))); }
+  .pause-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 17px; }
+  .pause-options { padding-left: 16px; border-left: 1px solid var(--pause-line); }
+  .pause-options > :first-child { border-top: 0; }
+  .pause-navigation { margin-bottom: 0; grid-template-columns: 1.2fr 1fr; }
+  .pause-main h2 { font-size: 26px; }
+  .pause-main .pause-thumb-guide { padding-bottom: 0; }
+  .pause-main { position: sticky; top: 0; align-self: start; }
+}

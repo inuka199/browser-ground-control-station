@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import SimulatorPage from '../components/simulator/SimulatorPage.jsx';
@@ -47,7 +47,8 @@ afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 
 it('flies with both thumbs, releases individual cancelled pointers and pauses on rotation or backgrounding',()=>{
   start();
-  expect(screen.getByText('Your first touch flight')).toBeVisible();
+  expect(screen.getByRole('heading',{name:'Ready to fly'})).toBeVisible();
+  expect(screen.getByText('Left stick')).toBeVisible();
   fireEvent.click(screen.getByRole('button',{name:'Start flight'}));
   function sticks() {
     const pads=[screen.getByRole('group',{name:'Throttle and yaw'}),screen.getByRole('group',{name:'Forward and sideways flight'})];
@@ -184,4 +185,24 @@ it('preserves keyboard flight and ignores portrait on desktop',()=>{
   fireEvent.keyDown(window,{code:'Escape'});expect(screen.getByRole('button',{name:'Resume'})).toBeVisible();
   fireEvent.keyDown(window,{code:'Escape'});expect(screen.queryByRole('dialog')).toBeNull();
   expect(lock).not.toHaveBeenCalled();
+});
+
+it('keeps pause preferences and offline help folded until requested',()=>{
+  touch=false;
+  start();
+  fireEvent.keyDown(window,{code:'Escape'});
+  const menu=within(screen.getByRole('dialog',{name:'Pause menu'}));
+  expect(menu.getByRole('button',{name:'Resume'})).toHaveFocus();
+  expect(menu.getByText('Display & sound').closest('details')).not.toHaveAttribute('open');
+  expect(menu.getByText('Offline access').closest('details')).not.toHaveAttribute('open');
+  fireEvent.click(menu.getByText('Display & sound'));
+  fireEvent.click(menu.getByRole('checkbox',{name:'Flight HUD'}));
+  expect(useSimulatorStore.getState().isHudVisible).toBe(false);
+  fireEvent.change(menu.getByRole('slider',{name:'Sound volume'}),{target:{value:'0.7'}});
+  expect(menu.getByText('70%')).toBeVisible();
+  fireEvent.click(menu.getByText('Offline access'));
+  expect(menu.getByText('Offline installation unavailable')).toBeVisible();
+  expect(useSimulatorStore.getState().isPaused).toBe(true);
+  fireEvent.click(menu.getByRole('button',{name:'Resume'}));
+  expect(screen.queryByRole('dialog')).toBeNull();
 });

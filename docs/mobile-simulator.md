@@ -20,7 +20,7 @@ Read the first-flight guide and tap **Start flight**. In a phone browser this ta
 
 Press the left stick up to take off. Keep it up to climb, pull it down to land, and move it sideways to turn. On the right stick, up flies forward, down flies backward, and sideways strafes. Both sticks work together and spring to neutral when released.
 
-Use **Camera** to switch among the five views. **Flight settings** contains graphics, weather, audio, detailed instruments, the launch compass and recording tools. **Pause** contains resume, restart and installation. Rotation and app switching pause the flight and release both sticks. Returning to landscape or reopening the app leaves the aircraft paused until you tap **Resume**. Desktop players can still pause and resume with Escape.
+Use **Camera** to switch among the five views. **Flight settings** contains graphics, weather, audio, detailed instruments, the launch compass and recording tools. In **Pause**, open **Display & sound** for the HUD, mute and volume, **Flight actions** to restart, or **Offline access** for installation. Rotation and app switching pause the flight and release both sticks. Returning to landscape or reopening the app leaves the aircraft paused until you tap **Resume**. Desktop players can still pause and resume with Escape.
 
 Low is the initial preset on touch devices. Balanced and High are available in Flight settings. Low targets 30 rendered frames per second, caps pixel ratio at 1, disables shadow maps, and reduces cloud, ocean and terrain detail and viewing distance. The horizon still expands with altitude. Actual frame rate depends on the device and scene.
 
@@ -32,7 +32,7 @@ Aircraft selection, camera, audio preferences, world settings and completed chal
 
 For HTTPS hosting, publish the **contents of client/dist** at the domain root. Serve files at their exact URLs, including **/simulator-worker.js** and **/simulator-pwa/**. Configure SPA fallback to **/index.html** for application navigation. Give the worker and HTML a revalidation policy. Hashed files under **/assets/** can use immutable caching. Deploy the build together so every file referenced by the new worker is available.
 
-Open **/simulator** online, pause, and wait for **Ready for offline flight**. Tap **Install simulator** if it appears, or use the browser’s installation menu. On iPhone, open Safari’s Share menu and select **Add to Home Screen**. The installed app starts on **/simulator**. The cache includes the game, garage and challenges. Google tiles, the live station and network services require connectivity. The local procedural coast works offline.
+Open **/simulator** online, pause, open **Offline access**, and wait for **Ready for offline flight**. Tap **Install simulator** if it appears, or use the browser’s installation menu. On iPhone, open Safari’s Share menu and select **Add to Home Screen**. The installed app starts on **/simulator**. The cache includes the game, garage and challenges. Google tiles, the live station and network services require connectivity. The local procedural coast works offline.
 
 An update downloads into a separate cache. A partial or mismatched download leaves the previous build usable. Close the site’s tabs or installed windows after saving, then reopen to activate the update. Updates preserve the game’s device storage. Clearing site data removes local saves.
 

@@ -353,7 +353,7 @@ export default function SimulatorPage() {
             const upright = touch && portraitViewport();
             if (touch) void landscapeSession.current?.request();
             setStarting(false);
-            if (touch && needsGuide) {
+            if (touch && needsGuide && !upright) {
               writePreference('nexus-touch-guide-v1', '1');
               setNeedsGuide(false);
             }

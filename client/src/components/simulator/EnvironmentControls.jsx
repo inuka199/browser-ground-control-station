@@ -7,7 +7,7 @@ import SoundControls from './SoundControls.jsx';
 
 const PRESETS = [{label:'Dawn',hour:6.4},{label:'Day',hour:12},{label:'Golden',hour:17.3},{label:'Night',hour:22}];
 
-export default function EnvironmentControls({ compact = false, children }) {
+export default function EnvironmentControls({ compact = false, includeSound = true, children }) {
   const settingsId = React.useId();
   const section = React.useRef(null);
   const [open,setOpen]=useState(false);
@@ -56,7 +56,7 @@ export default function EnvironmentControls({ compact = false, children }) {
       <label className="environment-check"><span>Traffic & pedestrians</span><input type="checkbox" disabled={tilesStatus==='ready'} checked={cityLife} onChange={e=>actions.setCityLife(e.target.checked)}/></label>
       <label className="environment-select"><span>Graphics quality</span><select aria-label="Graphics quality" value={quality} onChange={e=>actions.setQuality(e.target.value)}><option value="low">Low</option><option value="balanced">Balanced</option><option value="high">High</option></select></label>
       <p>{quality==='high' ? 'Full resolution, detailed shadows and light bloom.' : quality==='low' ? 'Lighter rendering with fewer people and vehicles.' : 'Soft shadows and city life at a balanced resolution.'}</p>
-      <SoundControls />{children}
+      {includeSound && <SoundControls />}{children}
     </div>}
   </section>;
 }

@@ -1,136 +1,108 @@
-/**
- * simulator/PauseMenu.jsx
- *
- * Full-screen pause overlay with:
- *  - Resume button
- *  - Settings panel (HUD, control guide, FPV sensitivity note)
- *  - Keyboard reference card
- *  - Clear "pause ≠ SITL stopped" disclaimer
- */
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useSimulatorStore } from '../../store/slices/simulator.js';
-import { useConnectionStore } from '../../store/slices/connection.js';
-import SoundControls from './SoundControls.jsx';
-import EnvironmentControls from './EnvironmentControls.jsx';
-
 import { useChallengeStore } from '../../store/slices/challenges.js';
+import EnvironmentControls from './EnvironmentControls.jsx';
 import SimulatorInstall from './SimulatorInstall.jsx';
+import SoundControls from './SoundControls.jsx';
+import './PauseMenu.css';
 
 const KEY_BINDINGS = [
-  { key: 'Esc',   action: 'Pause / Resume' },
-  { key: 'H',     action: 'Toggle HUD & controls' },
-  { key: 'G',     action: 'Toggle control guide' },
-  { key: 'A / D', action: 'Rotate left / right' },
-  { key: '↑ / ↓', action: 'Fly forward / back · nose down / up' },
-  { key: 'I',     action: 'Environment settings' },
-  { key: 'M',     action: 'Mute / unmute sound' },
-  { key: '1–5',   action: 'Camera: Chase / FPV / Top / Side / Free' },
-  { key: 'C',     action: 'Cycle camera mode' },
-  { key: 'T',     action: 'Hold 0.5s: detonate drone · tap: locked target' },
-  { key: 'B',     action: 'Toggle 3D tiles' },
+  ['W / S', 'Climb / descend'], ['A / D', 'Turn left / right'],
+  ['↑ / ↓', 'Fly forward / backward'], ['← / →', 'Fly sideways'],
+  ['1–5 / C', 'Select / cycle camera'], ['Esc', 'Pause / resume'],
+  ['H / G', 'Toggle HUD / control guide'], ['M', 'Mute / unmute'],
+  ['I / F', 'Environment / flight controls'], ['B', 'Toggle 3D tiles'],
+  ['T', 'Tap for target action. Hold for drone detonation.'],
 ];
 
-export default function PauseMenu({ onResume, onExit, touch, firstTouch, starting, rotate, installState }) {
-  const [confirmDetonation, setConfirmDetonation] = React.useState(false);
-  const isHudVisible   = useSimulatorStore((s) => s.isHudVisible);
-  const isGuideVisible = useSimulatorStore((s) => s.isGuideVisible);
-  const connStatus     = useConnectionStore((s) => s.status);
-  const isConnected    = connStatus === 'connected';
+function KeyboardGuide() {
+  return <details className="pause-section">
+    <summary>Keyboard shortcuts</summary>
+    <dl className="pause-bindings">{KEY_BINDINGS.map(([keys, action]) =>
+      <div key={keys}><dt><kbd>{keys}</kbd></dt><dd>{action}</dd></div>
+    )}</dl>
+  </details>;
+}
 
+function TouchGuide() {
+  return <dl className="pause-thumb-guide">
+    <div><dt>Left stick</dt><dd>Up to take off or climb, down to land. Left or right to turn.</dd></div>
+    <div><dt>Right stick</dt><dd>Move in any direction. Release both sticks to hover.</dd></div>
+  </dl>;
+}
+
+export default function PauseMenu({ onResume, onExit, touch, firstTouch, starting, rotate, installState }) {
+  const dialog = useRef(null);
+  const primary = useRef(null);
+  const [confirmDetonation, setConfirmDetonation] = useState(false);
+  const isHudVisible = useSimulatorStore(s => s.isHudVisible);
+  const isGuideVisible = useSimulatorStore(s => s.isGuideVisible);
   const { toggleHud, toggleGuide } = useSimulatorStore.getState();
 
-  return (
-    <div className="pause-overlay" role="dialog" aria-modal="true" aria-label="Pause menu">
-      <div className="pause-panel">
+  useLayoutEffect(() => {
+    const panel = dialog.current;
+    if (panel.showModal) panel.showModal();
+    else panel.open = true;
+    primary.current.focus({ preventScroll: true });
+    return () => panel.close?.();
+  }, []);
 
-        {/* Logo / title */}
-        <div className="pause-logo">
-          <span className="pause-logo-icon">✈</span>
-          <span className="pause-logo-name">Nexus Flight Sim</span>
+  const showFirstGuide = firstTouch && !rotate;
+  const title = rotate ? 'Rotate your phone to play' : starting || showFirstGuide ? 'Ready to fly' : 'Paused';
+  const action = starting ? 'Start flight' : rotate ? 'Try landscape' : 'Resume';
+
+  return <dialog ref={dialog} className="flight-pause" aria-label="Pause menu" onCancel={event => {
+    event.preventDefault();
+    if (!touch) onResume();
+  }}>
+    <div className="pause-layout">
+      <div className="pause-main">
+        <header>
+          <p className="pause-context">Nexus <span aria-hidden="true">/</span> Offline simulator</p>
+          <h2 className={rotate ? 'rotate-title' : undefined}>{title}</h2>
+          {rotate && <p className="pause-hint">Turn your phone sideways, then tap Resume.</p>}
+        </header>
+        {showFirstGuide && <TouchGuide/>}
+        <div className="pause-navigation">
+          <button ref={primary} id="pause-resume-btn" className="pause-primary" onClick={onResume}>{action}</button>
+          <button id="pause-exit-btn" className="pause-exit" onClick={onExit} aria-label="Back to GCS Dashboard">Dashboard</button>
         </div>
-        {rotate
-          ? <><h2 className="rotate-title">Rotate your phone to play</h2>
-            <p>Turn your phone sideways, then tap Resume.</p></>
-          : <p className="pause-subtitle">{firstTouch ? 'Your first touch flight' : starting ? 'Ready to fly' : 'Paused'}</p>}
-        {touch && <div className="touch-brief">
-          <p><b>Left thumb</b> Push up to take off and climb. Pull down to descend and land. Move sideways to turn.</p>
-          <p><b>Right thumb</b> Push forward or back to fly. Move sideways to strafe. Release both sticks to hover.</p>
-        </div>}
+      </div>
 
-        {/* SITL disclaimer */}
-        {!touch && <div className="pause-sitl-notice">
-          <span className="pause-notice-icon">ℹ️</span>
-          <p>
-            {isConnected
-              ? 'The 3D view is paused. The ArduPilot SITL simulation continues running independently — telemetry is still being received.'
-              : 'Running in demo mode. Connect the bridge and ArduPilot SITL to fly with real vehicle dynamics.'}
-          </p>
-        </div>
-
-        }
-        {/* Action buttons */}
-        <div className="pause-actions">
-          <button id="pause-resume-btn" className="pause-btn pause-btn--primary" onClick={onResume}>
-            {starting ? 'Start flight' : rotate ? 'Try landscape' : 'Resume'}
-          </button>
-          <button id="pause-exit-btn" className="pause-btn pause-btn--secondary" onClick={onExit}>
-            ← Back to GCS Dashboard
-          </button>
-        </div>
-
-        {/* Settings */}
-        {rotate && <EnvironmentControls compact/>}
-        <div className="pause-settings">
-          <h4 className="pause-settings-title">Display Settings</h4>
-          <label className="pause-toggle-row">
-            <span>Flight HUD</span>
-            <button
-              className={`pause-toggle ${isHudVisible ? 'pause-toggle--on' : ''}`}
-              onClick={toggleHud}
-              aria-pressed={isHudVisible}
-            >
-              {isHudVisible ? 'ON' : 'OFF'}
-            </button>
-          </label>
-          {!touch && <label className="pause-toggle-row">
-            <span>Control Guide</span>
-            <button
-              className={`pause-toggle ${isGuideVisible ? 'pause-toggle--on' : ''}`}
-              onClick={toggleGuide}
-              aria-pressed={isGuideVisible}
-            >
-              {isGuideVisible ? 'ON' : 'OFF'}
-            </button>
-          </label>}
-        </div>
-
-        {touch && !firstTouch && !rotate && <details className="pause-keys"><summary>Flight actions</summary>
-          <button onClick={() => { const challenge = useChallengeStore.getState();
-            if (challenge.active) challenge.startChallenge(challenge.active.id);
-            useSimulatorStore.getState().restartDemo({ paused: true });
-          }}>Restart at launch point</button>
-          <button onClick={() => {
-            if (!confirmDetonation) { setConfirmDetonation(true); return; }
-            useSimulatorStore.getState().detonateDemo(); setConfirmDetonation(false);
-          }}>{confirmDetonation ? 'Confirm drone detonation' : 'Detonate simulated drone…'}</button>
-        </details>}
-        <SimulatorInstall state={installState} />
-        <SoundControls />
-
-        {/* Keyboard reference */}
-        <details className="pause-keys">
-          <summary className="pause-settings-title">Keyboard shortcuts</summary>
-          <div className="pause-keys-grid">
-            {KEY_BINDINGS.map(({ key, action }) => (
-              <React.Fragment key={key}>
-                <kbd className="pause-kbd">{key}</kbd>
-                <span className="pause-key-action">{action}</span>
-              </React.Fragment>
-            ))}
+      <div className="pause-options">
+        <details className="pause-section">
+          <summary>Display &amp; sound</summary>
+          <div className="pause-preferences">
+            <label><span>Flight HUD</span><input type="checkbox" checked={isHudVisible} onChange={toggleHud}/></label>
+            {!touch && <label><span>Control guide</span><input type="checkbox" checked={isGuideVisible} onChange={toggleGuide}/></label>}
+            <SoundControls minimal/>
           </div>
         </details>
-
+        {rotate && <EnvironmentControls compact includeSound={false}/>}
+        {touch && !showFirstGuide && <details className="pause-section">
+          <summary>Controls</summary><TouchGuide/><KeyboardGuide/>
+        </details>}
+        {(!touch || showFirstGuide) && <KeyboardGuide/>}
+        {touch && !firstTouch && !rotate && <details className="pause-section"
+          onToggle={event => { if (!event.currentTarget.open) setConfirmDetonation(false); }}>
+          <summary>Flight actions</summary>
+          <div className="pause-tools">
+            <button onClick={() => {
+              const challenge = useChallengeStore.getState();
+              if (challenge.active) challenge.startChallenge(challenge.active.id);
+              useSimulatorStore.getState().restartDemo({ paused: true });
+            }}>Restart at launch point</button>
+            <button onClick={() => {
+              if (!confirmDetonation) { setConfirmDetonation(true); return; }
+              useSimulatorStore.getState().detonateDemo();
+              setConfirmDetonation(false);
+            }}>{confirmDetonation ? 'Confirm drone detonation' : 'Detonate simulated drone'}</button>
+          </div>
+        </details>}
+        {installState && <details className="pause-section"><summary>Offline access
+          {installState.update && <small>Update available</small>}
+        </summary><SimulatorInstall state={installState}/></details>}
       </div>
     </div>
-  );
+  </dialog>;
 }
