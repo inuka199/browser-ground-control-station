@@ -69,6 +69,7 @@
 .pause-tools { display: grid; gap: 6px; }
 .flight-install p { margin: 5px 0 0; line-height: 1.5; }
 .flight-install button { margin-top: 8px; }
+.flight-pause .flight-install { border-top: 1px solid var(--pause-line); padding: 6px 2px; }
 .flight-pause .sim-environment { width: 100%; border-top: 1px solid var(--pause-line); }
 .flight-pause .environment-toggle { padding-inline: 2px; box-shadow: none; background: transparent; border: 0; }
 .flight-pause .environment-toggle strong { font: 500 14px Inter, system-ui, sans-serif; letter-spacing: 0; }

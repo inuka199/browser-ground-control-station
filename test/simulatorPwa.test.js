@@ -34,10 +34,10 @@ test('offline game installs its exact imports, serves a cold game navigation and
   const caches={keys:async()=>[...all.keys()],delete:key=>all.delete(key),open:async key=>{
     if(!all.has(key)){
       const data=new Map();
-      all.set(key,{match:url=>data.get(url),addAll:async requests=>{
+      all.set(key,{match:url=>data.get(url),keys:async()=>[...data.keys()].map(url=>({url})),addAll:async requests=>{
         const batch=await Promise.all(requests.map(async req=>{
           const content=await readFile(join(dir,new URL(req.url).pathname.slice(1)));
-          assert.equal(req.credentials,'omit');assert.equal(req.redirect,'error');
+          assert.equal(req.credentials,'same-origin');assert.equal(req.redirect,'error');
           assert.equal('sha256-'+createHash('sha256').update(content).digest('base64'),req.integrity);
           return [req.url,content.toString()];
         }));
@@ -48,23 +48,35 @@ test('offline game installs its exact imports, serves a cold game navigation and
   }};
   await caches.open('unrelated');
   let clientPath='/simulator';
+  let otherTabs=[], skips=0;
   async function release() {
     await simulatorPwa().writeBundle({dir});
     const events={};
     vm.runInNewContext(await readFile(join(dir,'simulator-worker.js'),'utf8'),{
-      caches,URL,Request,fetch:()=>Promise.reject(Error('offline')), self:{location:{origin},
-        clients:{get:async()=>({url:origin+clientPath}),claim:()=>{}},
+      caches,URL,Request,Response,fetch:()=>Promise.reject(Error('offline')), self:{location:{origin},
+        clients:{get:async()=>({url:origin+clientPath}),claim:()=>{},matchAll:async()=>[{id:'tab'},...otherTabs]},
+        skipWaiting:async()=>{skips++;},
         addEventListener:(type,fn)=>{events[type]=fn}}
     });
     function lifecycle(event){let done;events[event]({waitUntil:p=>{done=p;}});return done;}
     function request(path,mode='navigate'){
       let reply;events.fetch({request:{url:origin+path,method:'GET',mode},clientId:'tab',respondWith:p=>{reply=p;}});
+      return mode === 'navigate' && reply ? reply.then(response => response.text()) : reply;
+    }
+    async function message(data) {
+      let reply, done;
+      events.message({data,source:{id:'tab',url:origin+clientPath},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>{done=p;}});
+      await done;
       return reply;
     }
-    return {lifecycle,request};
+    return {lifecycle,request,message};
   }
   const first=await release();
+  assert.equal(await first.message('CHECK'),'INCOMPLETE');
   await first.lifecycle('install');await first.lifecycle('activate');
+  assert.equal(await first.message('CHECK'),'COMPLETE');
+  assert.equal(first.request('/index.html','cors'),undefined);
+  assert.equal(await first.request('/simulator/'),'index.html v1');
   for(const path of paths)assert.equal(await first.request(path+'?offline=1'),'index.html v1');
   assert.equal(await first.request('/shared.js','cors'),'shared.js v1');
   for(const outside of ['/live','/api/login','/simulator?launch=live','/']) assert.equal(first.request(outside),undefined);
@@ -74,8 +86,12 @@ test('offline game installs its exact imports, serves a cold game navigation and
   const next=await release();
   await writeFile(join(dir,'game.css'),'authentication page');
   await assert.rejects(next.lifecycle('install'));
+  assert.equal(await next.message('CHECK'),'INCOMPLETE');
   assert.equal(await first.request('/simulator'),'index.html v1');
-  await writeFile(join(dir,'game.css'),'game.css v1');await next.lifecycle('install');
+  await writeFile(join(dir,'game.css'),'game.css v1');assert.equal(await next.message('REPAIR'),'COMPLETE');
+  otherTabs=[{id:'second-game'}];assert.equal(await next.message('ACTIVATE'),'OTHER_TABS');assert.equal(skips,0);
+  otherTabs=[];clientPath='/live';assert.equal(await next.message('ACTIVATE'),undefined);assert.equal(skips,0);
+  clientPath='/simulator';assert.equal(await next.message('ACTIVATE'),'ACTIVATING');assert.equal(skips,1);
   assert.equal(await first.request('/simulator'),'index.html v1');
   await next.lifecycle('activate');assert.equal(await next.request('/simulator'),'index.html v2');
   assert.equal(all.size,2);assert.ok(all.has('unrelated'));

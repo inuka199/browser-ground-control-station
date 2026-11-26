@@ -317,7 +317,7 @@ export default function SimulatorPage() {
 
   const handleExit = () => {
     setPaused(false);
-    navigate('/');
+    navigate(navigator.onLine ? '/' : '/garage');
   };
 
   return (

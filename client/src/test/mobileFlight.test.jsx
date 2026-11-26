@@ -93,6 +93,22 @@ it('flies with both thumbs, releases individual cancelled pointers and pauses on
   expect(useSimulatorStore.getState().cameraMode).toBe('fpv');
 });
 
+it('uses the native install prompt once and updates the game menu after installation',async ()=>{
+  start();
+  const prompt = vi.fn().mockResolvedValue(undefined);
+  const invitation = Object.assign(new Event('beforeinstallprompt',{cancelable:true}), {
+    prompt, userChoice: Promise.resolve({outcome:'accepted'})
+  });
+  fireEvent(window, invitation);
+  expect(invitation.defaultPrevented).toBe(true);
+  await act(async () => { fireEvent.click(screen.getByRole('button',{name:'Install game'})); });
+  expect(prompt).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('Game installed')).toBeNull();
+  fireEvent(window,new Event('appinstalled'));
+  expect(screen.getByText('Game installed')).toBeVisible();
+  expect(screen.queryByRole('button',{name:'Install game'})).toBeNull();
+});
+
 it('restores a device checkpoint paused, keeps explicit launch links fresh, and tolerates damaged storage',()=>{
   const flight={x:4200,z:-300,y:170,yaw:.35,grounded:false};
   saveFlightPosition(flight,'port-city');
@@ -187,20 +203,20 @@ it('preserves keyboard flight and ignores portrait on desktop',()=>{
   expect(lock).not.toHaveBeenCalled();
 });
 
-it('keeps pause preferences and offline help folded until requested',()=>{
+it('offers installation from the pause menu while keeping preferences folded',()=>{
   touch=false;
   start();
   fireEvent.keyDown(window,{code:'Escape'});
   const menu=within(screen.getByRole('dialog',{name:'Pause menu'}));
   expect(menu.getByRole('button',{name:'Resume'})).toHaveFocus();
   expect(menu.getByText('Display & sound').closest('details')).not.toHaveAttribute('open');
-  expect(menu.getByText('Offline access').closest('details')).not.toHaveAttribute('open');
+  expect(menu.getByRole('button',{name:'Install game'})).toBeVisible();
   fireEvent.click(menu.getByText('Display & sound'));
   fireEvent.click(menu.getByRole('checkbox',{name:'Flight HUD'}));
   expect(useSimulatorStore.getState().isHudVisible).toBe(false);
   fireEvent.change(menu.getByRole('slider',{name:'Sound volume'}),{target:{value:'0.7'}});
   expect(menu.getByText('70%')).toBeVisible();
-  fireEvent.click(menu.getByText('Offline access'));
+  fireEvent.click(menu.getByRole('button',{name:'Install game'}));
   expect(menu.getByText('Offline installation unavailable')).toBeVisible();
   expect(useSimulatorStore.getState().isPaused).toBe(true);
   fireEvent.click(menu.getByRole('button',{name:'Resume'}));

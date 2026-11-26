@@ -1,5 +1,7 @@
 # Fly the Nexus simulator on a phone
 
+The [deployed simulator](https://nexus-drone-flight-simulator.restfulminnow2.chatgpt.site/simulator) requires the site owner's ChatGPT sign-in on the first online visit.
+
 Open the project and select **Start flying**, or open **/simulator** directly. Desktop and phone use the same Three.js aircraft, flight model, coastal world and game routes. The simulator opens without a bridge connection or game account. Operator authentication and session expiry belong to the live station at **/live**.
 
 ## Try it over Wi-Fi
@@ -20,7 +22,7 @@ Read the first-flight guide and tap **Start flight**. In a phone browser this ta
 
 Press the left stick up to take off. Keep it up to climb, pull it down to land, and move it sideways to turn. On the right stick, up flies forward, down flies backward, and sideways strafes. Both sticks work together and spring to neutral when released.
 
-Use **Camera** to switch among the five views. **Flight settings** contains graphics, weather, audio, detailed instruments, the launch compass and recording tools. In **Pause**, open **Display & sound** for the HUD, mute and volume, **Flight actions** to restart, or **Offline access** for installation. Rotation and app switching pause the flight and release both sticks. Returning to landscape or reopening the app leaves the aircraft paused until you tap **Resume**. Desktop players can still pause and resume with Escape.
+Use **Camera** to switch among the five views. **Flight settings** contains graphics, weather, audio, detailed instruments, the launch compass and recording tools. In **Pause**, open **Display & sound** for the HUD, mute and volume. Open **Flight actions** to restart. **Install game** is visible on the start and pause screens. Rotation and app switching pause the flight and release both sticks. Returning to landscape or reopening the app leaves the aircraft paused until you tap **Resume**. Desktop players can still pause and resume with Escape.
 
 Low is the initial preset on touch devices. Balanced and High are available in Flight settings. Low targets 30 rendered frames per second, caps pixel ratio at 1, disables shadow maps, and reduces cloud, ocean and terrain detail and viewing distance. The horizon still expands with altitude. Actual frame rate depends on the device and scene.
 
@@ -32,9 +34,9 @@ Aircraft selection, camera, audio preferences, world settings and completed chal
 
 For HTTPS hosting, publish the **contents of client/dist** at the domain root. Serve files at their exact URLs, including **/simulator-worker.js** and **/simulator-pwa/**. Configure SPA fallback to **/index.html** for application navigation. Give the worker and HTML a revalidation policy. Hashed files under **/assets/** can use immutable caching. Deploy the build together so every file referenced by the new worker is available.
 
-Open **/simulator** online, pause, open **Offline access**, and wait for **Ready for offline flight**. Tap **Install simulator** if it appears, or use the browser’s installation menu. On iPhone, open Safari’s Share menu and select **Add to Home Screen**. The installed app starts on **/simulator**. The cache includes the game, garage and challenges. Google tiles, the live station and network services require connectivity. The local procedural coast works offline.
+Open **/simulator** online in the phone browser and sign in if the host asks. Tap **Install game** on the start or pause screen. Android Chrome shows its native install prompt when available. On iPhone, use Safari’s Share menu, choose **Add to Home Screen**, enable **Open as Web App** if shown, and tap **Add**. Before going offline, wait for **Ready for offline play**. An offline launch restores the saved local flight. While offline, the pause screen offers the garage as an exit.
 
-An update downloads into a separate cache. A partial or mismatched download leaves the previous build usable. Close the site’s tabs or installed windows after saving, then reopen to activate the update. Updates preserve the game’s device storage. Clearing site data removes local saves.
+The worker bundles the release's offline HTML and checks its asset cache before reporting readiness. Online navigation goes through the host's normal sign-in flow. Personalised host pages and sign-in responses are never saved by the game worker. A failed download offers a retry and leaves any previously verified release usable. When an update has downloaded, finish your challenge or recording and tap **Update game** while paused. Close other windows for the same site if prompted. The simulator opens the saved checkpoint after the update. Clearing site data removes local saves.
 
 ## Validation
 
@@ -56,6 +58,8 @@ For the landscape update, Edge ran the production game with a 390 × 844 touch v
 A sample at the same hovering location measured 519 draw calls and 4.2 FPS on Balanced versus 311 draw calls and 4.8 FPS on Low in software rendering. These are single-scene desktop measurements. The removed startup water mesh had 68,908 vertices and took a median 29.8 ms to build over nine Node runs on this host. Free flight now creates only the streamed water mesh.
 
 The landscape build passed all 197 frontend tests, all 24 Node tests, lint and the production build. The frontend suite covers fullscreen and standalone launch requests, denied and missing orientation locks, clearing two held sticks, resuming after a late lock result or a rotation, and desktop keyboard flight.
+
+The HTTPS installation release packages its offline HTML in the service worker because the host redirects `/index.html`. All 28 required assets and the worker matched the production build when fetched from the existing private site. Desktop Chrome reported zero installability errors in a standalone window. With a mobile viewport in Chrome, a touch flight checkpoint survived a reload with the test server offline and a staged update activated while paused. Phone operating-system installation and rotation still need a handset check.
 
 To finish handset validation, open the HTTPS simulator in a phone browser and again from its installed home-screen icon. Try with the phone's rotation lock both on and off. During a climb, hold both sticks and rotate, then switch apps and return. Check that the sticks are neutral and flight stays paused until Resume. Check both landscape directions around the phone cutout, and test settings and exit while upright. Reopen in airplane mode and confirm the checkpoint. Measure sustained frame rate, audio and heat on the target handset.
 

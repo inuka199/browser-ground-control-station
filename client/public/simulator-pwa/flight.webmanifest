@@ -5,6 +5,7 @@
   "description": "Explore the Colombo coast in the offline 3D drone simulator.",
   "scope": "/",
   "start_url": "/simulator",
+  "related_applications": [{ "platform": "webapp", "url": "/simulator-pwa/flight.webmanifest", "id": "/simulator" }],
   "display": "standalone",
   "orientation": "landscape",
   "background_color": "#102326",

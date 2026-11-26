@@ -65,7 +65,7 @@ export default function PauseMenu({ onResume, onExit, touch, firstTouch, startin
         {showFirstGuide && <TouchGuide/>}
         <div className="pause-navigation">
           <button ref={primary} id="pause-resume-btn" className="pause-primary" onClick={onResume}>{action}</button>
-          <button id="pause-exit-btn" className="pause-exit" onClick={onExit} aria-label="Back to GCS Dashboard">Dashboard</button>
+          <button id="pause-exit-btn" className="pause-exit" onClick={onExit} aria-label={navigator.onLine ? 'Back to GCS Dashboard' : 'Exit to garage'}>{navigator.onLine ? 'Dashboard' : 'Garage'}</button>
         </div>
       </div>
 
@@ -99,9 +99,7 @@ export default function PauseMenu({ onResume, onExit, touch, firstTouch, startin
             }}>{confirmDetonation ? 'Confirm drone detonation' : 'Detonate simulated drone'}</button>
           </div>
         </details>}
-        {installState && <details className="pause-section"><summary>Offline access
-          {installState.update && <small>Update available</small>}
-        </summary><SimulatorInstall state={installState}/></details>}
+        <SimulatorInstall state={installState}/>
       </div>
     </div>
   </dialog>;
