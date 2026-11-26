@@ -1,0 +1,30 @@
+{
+  "id": "/simulator",
+  "name": "Nexus Flight Simulator",
+  "short_name": "Nexus Flight",
+  "description": "Explore the Colombo coast in the offline 3D drone simulator.",
+  "scope": "/",
+  "start_url": "/simulator",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#102326",
+  "theme_color": "#102326",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
+import { localId } from './localId.js';
 import { create } from 'zustand';
 let channel, timer, localFlight = null;
-const id = crypto.randomUUID();
+const id = localId();
 export function validPeer(message) {
   return message && ['presence','leave','hello'].includes(message.type) && typeof message.id === 'string' && message.id.length <= 64 && typeof message.name === 'string' && message.name.length <= 24 && (!message.flight || [message.flight.x,message.flight.y,message.flight.z,message.flight.yaw].every(value => Number.isFinite(value) && Math.abs(value) < 1e7));
 }

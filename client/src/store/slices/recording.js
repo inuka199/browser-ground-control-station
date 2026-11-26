@@ -1,3 +1,4 @@
+import { localId } from '../../services/localId.js';
 import { create } from 'zustand';
 import { validatePath } from '../../services/flightRecords.js';
 
@@ -19,7 +20,7 @@ export const useRecordingStore = create((set, get) => ({
       const stride = Math.max(1, Math.ceil(path.length / 3999));
       const samples = path.filter((_, i) => i % stride === 0);
       if (samples.at(-1) !== path.at(-1)) samples.push(path.at(-1));
-      const record = { id: crypto.randomUUID(), name: String(name || 'Flight ' + new Date().toLocaleString()).slice(0, 100), createdAt: new Date().toISOString(), modelId, source: ['live', 'plan'].includes(source) ? source : 'demo', points: samples };
+      const record = { id: localId(), name: String(name || 'Flight ' + new Date().toLocaleString()).slice(0, 100), createdAt: new Date().toISOString(), modelId, source: ['live', 'plan'].includes(source) ? source : 'demo', points: samples };
       const recordings = [record, ...get().recordings].slice(0, 8);
       localStorage.setItem(KEY, JSON.stringify(recordings));
       set({ recordings, lastError: null }); return record;

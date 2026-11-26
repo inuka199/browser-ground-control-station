@@ -10,6 +10,7 @@ import Sidebar from './Sidebar.jsx';
 export default function AppShell() {
   return (
     <div className="app-shell">
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"/>
       <Sidebar />
       <main className="app-shell__content">
         <Outlet />

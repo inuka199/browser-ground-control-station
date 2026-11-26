@@ -196,11 +196,11 @@ export const useSimulatorStore = create((set, get) => ({
   setLaunchPoint: (launchPoint) => {
     if (["galle-face", "port-city"].includes(launchPoint)) set({ launchPoint });
   },
-  restartDemo: () =>
+  restartDemo: ({ paused = false } = {}) =>
     set((s) => ({
       restartSerial: s.restartSerial + 1,
       isDestroyed: false,
-      isPaused: false,
+      isPaused: paused,
       destructionReason: "",
     })),
   buildingDistance: Infinity,

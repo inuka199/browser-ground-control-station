@@ -1,3 +1,4 @@
+import { localId } from '../../services/localId.js';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 export const CHALLENGES = [
@@ -28,7 +29,7 @@ export const useChallengeStore = create(persist((set, get) => ({
   active: null, results: {}, lastOutcome:null, actionSerial:0,
   startChallenge: id => {
     if (!CHALLENGES.some(challenge => challenge.id === id)) return;
-    set({ active: { id, runId:crypto.randomUUID(), stage: 0, hover: 0, elapsed: 0, warnings: 0, inHazard: false },lastOutcome:null,actionSerial:0 });
+    set({ active: { id, runId:localId(), stage: 0, hover: 0, elapsed: 0, warnings: 0, inHazard: false },lastOutcome:null,actionSerial:0 });
   },
   observe: (sample, delta) => {
     const active = advanceChallenge(get().active, sample, delta);

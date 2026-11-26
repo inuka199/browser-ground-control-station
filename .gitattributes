@@ -1,0 +1,6 @@
+client/public/tideline/*.js text eol=lf
+client/public/tideline/*.css text eol=lf
+client/public/tideline/*.html text eol=lf
+client/public/tideline/*.webmanifest text eol=lf
+client/public/tideline/*.png binary
+scripts/tideline-worker.template.js text eol=lf

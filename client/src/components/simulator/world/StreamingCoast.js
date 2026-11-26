@@ -123,7 +123,7 @@ export function buildStreamingCoast() {
   }
   function update(camera,quality) {
     radius.value=qualityRadius[quality];
-    const root=2**Math.ceil(Math.log2(viewRange(camera.y)));
+    const root=2**Math.ceil(Math.log2(viewRange(camera.y,quality)));
     const snap=smallest/4;
     const x=Math.floor((camera.x-COAST_X)/snap)*snap, z=Math.floor(camera.z/snap)*snap;
     const altitude=Math.floor(Math.max(0,camera.y-650)/snap)*snap;

@@ -2,6 +2,8 @@
 
 A browser ground control station for ArduPilot multicopter telemetry, with an offline 3D simulator and flight replay.
 
+Open **Start flying** or visit **/simulator** on your phone for the same 3D coastal world, touch controls and offline installation. [Mobile play, hosting and test results](docs/mobile-simulator.md).
+
 ## Overview and Features
 
 This project provides a real-time, browser-based dashboard to visualize telemetry data from an ArduPilot drone.

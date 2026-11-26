@@ -1,9 +1,10 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-// https://vite.dev/config/
+import simulatorPwa from './build/simulatorPwa.js'
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), simulatorPwa()],
+  build: { manifest: true },
   test: {
     pool: 'forks',
     maxWorkers: 1,

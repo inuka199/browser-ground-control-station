@@ -21,6 +21,11 @@ import React, { useEffect, useLayoutEffect, useCallback, useState, useRef } from
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { prepareFlightLaunch } from './flightLaunch.js';
 import SimulatorWorld      from './SimulatorWorld.jsx';
+import { useSimulatorInstall } from './useSimulatorInstall.js';
+import TouchFlight from './TouchFlight.jsx';
+import { createLandscapeSession, portraitQuery, portraitViewport } from './landscapeSession.js';
+import { wantsTouchFlight, touchFlightQuery, readPreference, writePreference, readFlightPosition } from './mobileFlight.js';
+import './TouchFlight.css';
 import GameHUD             from './GameHUD.jsx';
 import PauseMenu           from './PauseMenu.jsx';
 import { useSimulatorStore } from '../../store/slices/simulator.js';
@@ -73,9 +78,45 @@ function ControlGuide() {
 export default function SimulatorPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const installState = useSimulatorInstall();
   const destination = searchParams.get('launch');
+  const [touch, setTouch] = useState(wantsTouchFlight);
+  const [needsGuide, setNeedsGuide] = useState(() => !readPreference('nexus-touch-guide-v1'));
+  const touchAxes = useRef({});
+  const setTouchAxes = useCallback((horizontal, vertical, x, y) => {
+    touchAxes.current[horizontal] = x;
+    touchAxes.current[vertical] = y;
+  }, []);
+  const [saved] = useState(() => !destination && !useChallengeStore.getState().active && readFlightPosition());
+  const pageRef = useRef(null);
+  const landscapeSession = useRef(null);
+  const [portrait, setPortrait] = useState(portraitViewport);
+  const [starting, setStarting] = useState(!saved);
+  const isDestroyed = useSimulatorStore(s => s.isDestroyed);
+  useEffect(() => {
+    const media = window.matchMedia?.(touchFlightQuery);
+    const update = () => setTouch(wantsTouchFlight());
+    media?.addEventListener?.('change', update);
+    return () => media?.removeEventListener?.('change', update);
+  }, []);
   // Apply launch intent before SimulatorWorld's effect initializes its spawn/camera.
-  useLayoutEffect(() => { if(destination === 'live') { navigate('/live',{replace:true});return; } useSimulatorStore.getState().setFlightSource('demo'); prepareFlightLaunch(destination); }, [destination, navigate]);
+  useLayoutEffect(() => {
+    if (destination === 'live') { navigate('/live', {replace: true}); return; }
+    const sim = useSimulatorStore.getState();
+    sim.setFlightSource('demo');
+    prepareFlightLaunch(destination);
+    if (saved && !destination) {
+      sim.setLaunchPoint(saved.launchPoint);
+      sim.setPaused(true);
+    }
+  }, [destination, navigate, saved]);
+  useLayoutEffect(() => {
+    if (!touch) return;
+    useSimulatorStore.getState().setPaused(true);
+    const session = createLandscapeSession(pageRef.current);
+    landscapeSession.current = session;
+    return () => { session.dispose(); landscapeSession.current = null; };
+  }, [touch, destination]);
 
   const isPaused   = useSimulatorStore((s) => s.isPaused);
   const isHudVisible = useSimulatorStore(s => s.isHudVisible);
@@ -108,12 +149,31 @@ export default function SimulatorPage() {
     let rafId;
     const clearInput = () => {
       keysRef.current.clear();
+      touchAxes.current = {};
       holdAction.cancel();
       nextDetonationBeepAt.current = 0;
       Object.keys(demoInput).forEach((key) => { demoInput[key] = 0; });
     };
     const onBlur = () => { clearInput(); stopFlightAudio(); setPaused(true); };
-    const onVisibilityChange = () => { if (document.hidden) onBlur(); };
+    const onBackground = () => {
+      onBlur();
+      const simulator = useSimulatorStore.getState();
+      if (simulator.isRecording) simulator.stopRecording();
+    };
+    const onVisibilityChange = () => { if (document.hidden) onBackground(); };
+    let lastPortrait = portraitViewport();
+    const onRotate = () => {
+      lastPortrait = portraitViewport();
+      setPortrait(lastPortrait);
+      if (wantsTouchFlight()) { onBlur(); setStarting(false); }
+    };
+    const onResize = () => { if (lastPortrait !== portraitViewport()) onRotate(); };
+    const orientation = window.matchMedia?.(portraitQuery);
+    orientation?.addEventListener?.('change', onRotate);
+    window.screen?.orientation?.addEventListener?.('change', onRotate);
+    window.addEventListener('orientationchange', onRotate);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('pagehide', onBackground);
     const onFormFocus = (event) => { if (['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target.tagName) || event.target.isContentEditable) clearInput(); };
     window.addEventListener('blur', onBlur);
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -134,6 +194,9 @@ export default function SimulatorPage() {
         nextDetonationBeepAt.current = 0;
       }
       const axes = flightAxes(keysRef.current);
+      for (const axis of Object.keys(axes)) {
+        axes[axis] = Math.max(-1, Math.min(1, axes[axis] + (touchAxes.current[axis] || 0)));
+      }
       const lerp = (cur, tgt) => cur + (tgt - cur) * blend;
 
       demoInput.throttle = lerp(
@@ -164,6 +227,11 @@ export default function SimulatorPage() {
     rafId = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(rafId);
+      orientation?.removeEventListener?.('change', onRotate);
+      window.screen?.orientation?.removeEventListener?.('change', onRotate);
+      window.removeEventListener('orientationchange', onRotate);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('pagehide', onBackground);
       window.removeEventListener('blur', onBlur);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('focusin', onFormFocus);
@@ -190,7 +258,8 @@ export default function SimulatorPage() {
       case 'Escape':
         e.preventDefault();
         void enableFlightAudio();
-        togglePaused();
+        if (touch) setPaused(true);
+        else togglePaused();
         break;
       case 'KeyM':
         e.preventDefault();
@@ -227,7 +296,7 @@ export default function SimulatorPage() {
       case 'Digit5': setCameraMode('free');  break;
       default: break;
     }
-  }, [cameraMode, togglePaused, toggleHud, toggleGuide, setCameraMode, toggleTiles, holdAction]);
+  }, [touch, setPaused, cameraMode, togglePaused, toggleHud, toggleGuide, setCameraMode, toggleTiles, holdAction]);
 
   const handleKeyUp = useCallback((e) => {
     keysRef.current.delete(e.code);
@@ -252,31 +321,45 @@ export default function SimulatorPage() {
   };
 
   return (
-    <div className="simulator-page" aria-label="Flight Simulator" onPointerDownCapture={event => { if (!event.target.closest('[data-sound-toggle]')) void enableFlightAudio(); }}>
+    <div ref={pageRef} className={touch ? "simulator-page touch-flight" : "simulator-page"} aria-label="Flight Simulator" onPointerDownCapture={event => { if (!event.target.closest('[data-sound-toggle]')) void enableFlightAudio(); }}>
 
       {/* ── 3D World ── */}
-      <SimulatorWorld />
+      <SimulatorWorld savedFlight={saved?.flight} />
 
-      {/* ── HUD layer ── */}
-      <GameHUD
-        onPause={() => setPaused(true)}
-        fcpOpen={fcpOpen}
-        onToggleFcp={() => setFcpOpen((v) => !v)}
-      />
+      <div hidden={touch && (portrait || isPaused)}>
+        {/* ── HUD layer ── */}
+        <GameHUD touch={touch}
+          onPause={() => setPaused(true)}
+          fcpOpen={fcpOpen}
+          onToggleFcp={() => setFcpOpen((v) => !v)}
+        />
 
-      {/* ── Flight Control Panel (slide-out drawer) ── */}
-      {fcpOpen && isHudVisible && (
-        <aside className="flight-control-panel"><h2>Simulation</h2><p>Aircraft commands are available in the live station.</p><button onClick={()=>navigate('/live')}>Open live station</button><button onClick={()=>setFcpOpen(false)}>Close</button></aside>
-      )}
+        {/* ── Flight Control Panel (slide-out drawer) ── */}
+        {fcpOpen && isHudVisible && (
+          <aside className="flight-control-panel"><h2>Simulation</h2><p>Aircraft commands are available in the live station.</p><button onClick={()=>navigate('/live')}>Open live station</button><button onClick={()=>setFcpOpen(false)}>Close</button></aside>
+        )}
 
-      {/* ── Keyboard guide (bottom-left) ── */}
-      <ControlGuide />
-      <ChallengeOverlay />
+        {/* ── Keyboard guide (bottom-left) ── */}
+        {touch ? (!isPaused && !isDestroyed && <TouchFlight onAxes={setTouchAxes}/>) : <ControlGuide />}
+        <ChallengeOverlay />
+      </div>
 
       {/* ── Pause overlay ── */}
-      {isPaused && (
+      {(isPaused || (touch && portrait)) && (
         <PauseMenu
-          onResume={() => setPaused(false)}
+          installState={installState} touch={touch} firstTouch={touch && needsGuide}
+          starting={touch && starting} rotate={touch && portrait}
+          onResume={() => {
+            const upright = touch && portraitViewport();
+            if (touch) void landscapeSession.current?.request();
+            setStarting(false);
+            if (touch && needsGuide) {
+              writePreference('nexus-touch-guide-v1', '1');
+              setNeedsGuide(false);
+            }
+            void enableFlightAudio();
+            setPaused(Boolean(upright));
+          }}
           onExit={handleExit}
         />
       )}

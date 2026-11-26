@@ -56,7 +56,9 @@ export function buildSkyEnvironment(scene) {
   sky.renderOrder = -10; group.add(sky);
   const fog = new THREE.FogExp2(0x96b5c9, 0.00045); scene.fog = fog;
   const waterUniforms = { ...uniforms, fogColor: { value: fog.color }, fogDensity: { value: fog.density } };
-  const waterGeometry = oceanGeometry();
+  // Free flight uses the streamed ocean. Build the local mesh only when visible.
+  const waterGeometry = new THREE.BufferGeometry();
+  let localOceanQuality;
   const ocean = new THREE.Mesh(waterGeometry, new THREE.ShaderMaterial({ uniforms: waterUniforms, vertexShader: waterVertex, fragmentShader: waterFragment }));
   ocean.position.set(0, -0.9, 0); group.add(ocean);
   const random = seededRandom(135), starPositions = [];
@@ -102,9 +104,14 @@ export function buildSkyEnvironment(scene) {
     scene.environmentIntensity = 0.12 + state.daylight * 0.65;
     if (quality !== options.quality) {
       quality = options.quality; sun.castShadow = quality !== 'low';
-      ocean.geometry.dispose(); ocean.geometry = oceanGeometry(quality);
+
       const size = quality === 'high' ? 2048 : 1024;
       sun.shadow.mapSize.set(size,size); sun.shadow.map?.dispose(); sun.shadow.map = null;
+    }
+    if (ocean.visible && localOceanQuality !== quality) {
+      ocean.geometry.dispose();
+      ocean.geometry = oceanGeometry(quality);
+      localOceanQuality = quality;
     }
     return state;
   }

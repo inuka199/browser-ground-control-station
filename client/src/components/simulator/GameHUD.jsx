@@ -14,7 +14,7 @@ const number=(v,d=1)=>Number.isFinite(v) ? v.toFixed(d) : '—';
 function Instrument({label,value,unit}) {
   return <div className="hud-instrument"><span className="hud-instr-label">{label}</span><span className="hud-instr-value">{value}<small> {unit}</small></span></div>;
 }
-export default function GameHUD({onPause,fcpOpen,onToggleFcp}) {
+export default function GameHUD({touch,onPause,fcpOpen,onToggleFcp}) {
   const [showGuide,setShowGuide]=React.useState(false);
   const {data:telemetry,status,now}=useTelemetryHealth();
   const sim=useSimulatorStore();
@@ -28,7 +28,7 @@ export default function GameHUD({onPause,fcpOpen,onToggleFcp}) {
   return <div className="game-hud simple-flight" aria-label="Flight HUD">
     <div className="flight-topbar">
       <div className="flight-identity"><Link to="/" aria-label="Back to dashboard">← Home</Link><span className={live?'flight-live':''}>{live?'Live flight':sim.launchPoint==='port-city'?'Port City · Offline flight':'Offline flight'}</span></div>
-      <strong>SIMULATION</strong><div className="flight-cameras" role="group" aria-label="Camera mode">{CAMERAS.map(([id,label],i)=><button key={id} id={'cam-btn-'+id} aria-pressed={sim.cameraMode===id} onClick={()=>sim.setCameraMode(id)} title={label+' camera ['+(i+1)+']'}>{label}</button>)}</div>
+      <strong>SIMULATION</strong>{touch ? <label className="touch-camera"><span>Camera</span><select aria-label="Camera mode" value={sim.cameraMode} onChange={e=>sim.setCameraMode(e.target.value)}>{CAMERAS.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label> : <div className="flight-cameras" role="group" aria-label="Camera mode">{CAMERAS.map(([id,label],i)=><button key={id} id={'cam-btn-'+id} aria-pressed={sim.cameraMode===id} onClick={()=>sim.setCameraMode(id)} title={label+' camera ['+(i+1)+']'}>{label}</button>)}</div>}
       <div className="flight-actions"><SoundControls compact/><button onClick={onPause} title="Pause [Esc]">Pause</button></div>
     </div>
     <div className="flight-settings-anchor"><EnvironmentControls compact>
@@ -52,7 +52,7 @@ export default function GameHUD({onPause,fcpOpen,onToggleFcp}) {
     {sim.isRecording && <span className="flight-recording">● Recording <button onClick={sim.stopRecording}>Stop & save</button></span>}
     {sim.buildingDistance<10 && !sim.isGrounded && <div role="alert" className="flight-warning">Building nearby · {number(sim.buildingDistance)} m</div>}
     {sim.cameraMode==='fpv' && <div className="hud-reticle" aria-hidden="true"><div className="reticle-h"/><div className="reticle-v"/><div className="reticle-ring"/></div>}
-    {!live && sim.isGrounded && !sim.isDestroyed && <div className="flight-takeoff">Hold <kbd>W</kbd> to take off <span>· Arrows to fly</span></div>}
+    {!touch && !live && sim.isGrounded && !sim.isDestroyed && <div className="flight-takeoff">Hold <kbd>W</kbd> to take off <span>· Arrows to fly</span></div>}
     <div className="hud-instruments">
       {guide && showGuide && <div className="hud-instrument" aria-label="Direction to launch">
         <span className="hud-instr-label">Launch point</span>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#102e32"><meta name="description" content="Pilot a pocket drone across South Bay. Survey three beacons and return to the jetty.">
+<link rel="manifest" href="./app.webmanifest"><link rel="icon" href="./icon-192.png"><link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="stylesheet" href="./style.css"><title>Tideline · Beacon Patrol</title>
+</head>
+<body>
+<main id="deck" data-mode="brief">
+<header><div class="brand"><img src="./icon-192.png" width="32" height="32" alt="">Tideline</div>
+<div class="actions"><button id="sound" type="button" aria-pressed="false">Sound on</button><button id="install" type="button">Install</button><button id="pause" type="button" hidden>Pause</button></div></header>
+<div id="board">
+<div class="map"><canvas id="chart" aria-label="South Bay flight chart showing the drone, jetty and three survey beacons"></canvas>
+<div class="north" aria-hidden="true">N<span>↑</span></div></div>
+<section id="brief" class="sheet">
+<p class="kicker">South Bay &nbsp;/&nbsp; Coastal survey</p>
+<h1 id="title">Beacon patrol</h1>
+<p id="description">Three beacons. One battery. Fly the bay, scan each signal and bring your drone back to the jetty.</p>
+<div class="facts"><div><small id="factLabel">Flight time</small><strong id="factValue">100 seconds</strong></div><div><small>Personal best</small><strong id="best">—</strong></div></div>
+<div class="menu-actions"><button id="start" class="primary">Start flight <span aria-hidden="true">↗</span></button>
+<button id="how">How to fly</button><button id="restart" hidden>Restart flight</button></div>
+</section>
+<section id="flight" aria-label="Flight instruments" hidden>
+<div class="route"><small id="leg"></small><strong id="target"></strong></div>
+<div class="energy"><small>Battery</small><strong id="battery"></strong><progress id="meter" max="100" value="100"></progress></div>
+</section>
+<div id="controls" hidden>
+<div class="thumb"><div id="stick" aria-label="Steer the drone" role="group"><i></i></div><small>Steer</small></div>
+<div class="guidance"><b id="distance"></b><span id="cue"></span></div>
+<div class="thumb"><button id="scan" aria-label="Hold to scan"><b>◎</b><span>Scan</span></button><small>Hold</small></div>
+</div>
+</div>
+<footer><span id="availability" role="status">South Bay flight chart</span><span id="score"></span><button id="update" hidden>Save &amp; update</button></footer>
+<p id="storage" role="status" hidden>Device saving is unavailable for this session.</p>
+<dialog id="help"><div><h2 id="helpTitle">How to fly</h2><div id="helpBody"></div><button id="close" class="primary">Got it</button></div></dialog>
+<noscript>Enable JavaScript to fly Tideline.</noscript>
+</main>
+<script type="module" src="./app.js"></script>
+</body></html>

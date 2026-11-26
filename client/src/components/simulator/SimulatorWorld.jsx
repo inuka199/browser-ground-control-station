@@ -50,6 +50,7 @@ import {
   flightInstruments,
   hasLivePosition,
 } from "./flightDynamics.js";
+import { saveFlightPosition, clearFlightPosition } from './mobileFlight.js';
 import { demoInput } from "./demoInput.js";
 import {
   moveAroundBuildings,
@@ -107,7 +108,7 @@ function buildAltIndicator() {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function SimulatorWorld() {
+export default function SimulatorWorld({ savedFlight }) {
   const [renderError, setRenderError] = useState("");
   const mountRef = useRef(null);
   const droneRef = useRef(null); // { group, rotorMeshes, modelId }
@@ -125,6 +126,7 @@ export default function SimulatorWorld() {
     if (!container) return;
 
     // Use window dimensions as fallback — container might be 0×0 before layout
+    const initialQuality = useEnvironmentStore.getState().quality;
     const w = container.clientWidth || window.innerWidth;
     const h = container.clientHeight || window.innerHeight;
 
@@ -139,7 +141,7 @@ export default function SimulatorWorld() {
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({
-        antialias: true,
+        antialias: initialQuality !== 'low',
         powerPreference: "high-performance",
         // Centimetre-separated roads must remain distinct kilometres away.
         // Use one depth convention in both built-in and custom shaders.
@@ -155,7 +157,7 @@ export default function SimulatorWorld() {
       return;
     }
     renderer.setSize(w, h, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // The current preset sets the backing resolution before the first render.
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.95;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -186,7 +188,7 @@ export default function SimulatorWorld() {
       let reach = 0;
       if (coast) {
         camera.position.y = Math.max(camera.position.y, groundAt(camera.position.x,camera.position.z)+0.18);
-        reach = viewRange(camera.position.y);
+        reach = viewRange(camera.position.y, currentQuality);
         coast.update(camera.position,currentQuality);
         sea.update(camera.position,currentQuality,2**Math.ceil(Math.log2(reach))*3);
       }
@@ -287,6 +289,7 @@ export default function SimulatorWorld() {
     ) {
       if (destroyed) return;
       destroyed = true;
+      if (!useChallengeStore.getState().active) clearFlightPosition();
       useSimulatorStore.getState().setDestroyed(true, reason);
       if (useSimulatorStore.getState().isRecording)
         useSimulatorStore.getState().stopRecording();
@@ -397,8 +400,23 @@ export default function SimulatorWorld() {
       useSimulatorStore.getState().launchPoint !== "port-city"
         ? createFlight()
         : { ...PORT_SPAWN };
-    let demo = spawnFlight();
-    let launch = {...demo};
+    let launch = spawnFlight();
+    let demo = savedFlight ? {...savedFlight} : {...launch};
+    renderYaw = demo.yaw;
+    useSimulatorStore.getState().setGrounded(demo.grounded);
+    let lastSavedAt = performance.now();
+    function savePosition() {
+      const state = useSimulatorStore.getState();
+      if (state.flightSource === 'demo' && !destroyed && !useChallengeStore.getState().active &&
+          !game && !useChallengeStore.getState().lastOutcome && state.restartSerial === lastRestart)
+        saveFlightPosition(demo, state.launchPoint);
+    }
+    const onHide = () => { if (document.hidden) savePosition(); };
+    const unsubscribePause = useSimulatorStore.subscribe((state, previous) => {
+      if (state.isPaused && !previous.isPaused) savePosition();
+    });
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', savePosition);
     smoothPos.set(demo.x, demo.y, demo.z);
     let lastInstrumentTime = -Infinity;
     let lastPathSampleTime = -Infinity;
@@ -607,6 +625,10 @@ export default function SimulatorWorld() {
         };
         if(coast) demo=settleOnTerrain(demo);
         targetPos.set(demo.x, demo.y, demo.z);
+        if (frameNow - lastSavedAt >= 5000) {
+          savePosition();
+          lastSavedAt = frameNow;
+        }
         if (sim.isGrounded !== demo.grounded) sim.setGrounded(demo.grounded);
         if (now - lastInstrumentTime >= 100) {
           sim.setDemoData({
@@ -950,6 +972,10 @@ export default function SimulatorWorld() {
 
     // ── Cleanup ─────────────────────────────────────────────────────────────
     return () => {
+      savePosition();
+      unsubscribePause();
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', savePosition);
       activeRef.current = false; // allow re-mount (HMR / strict mode second pass)
       cancelAnimationFrame(animId);
       if (useSimulatorStore.getState().isRecording)
@@ -996,7 +1022,7 @@ export default function SimulatorWorld() {
         container.removeChild(renderer.domElement);
       }
     };
-  }, []); // run once — all live state read via getState() inside the loop
+  }, [savedFlight]); // run once — all live state read via getState() inside the loop
 
   return (
     <>

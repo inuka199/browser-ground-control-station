@@ -99,7 +99,7 @@ export function settleOnTerrain(state) {
   return {...state,y:Math.max(state.y,ground),grounded:state.y<=ground};
 }
 
-export function viewRange(altitude) {
-  return Math.max(8192, 8192 + Math.max(0,altitude)*9);
+export function viewRange(altitude, quality) {
+  return (8192 + Math.max(0,altitude)*9) * (quality === 'low' ? 0.75 : 1);
 }
 
